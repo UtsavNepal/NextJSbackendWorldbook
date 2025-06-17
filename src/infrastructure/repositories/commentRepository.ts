@@ -22,4 +22,7 @@ export const commentRepository = {
   async deleteComment(id: string) {
     return prisma.comment.delete({ where: { id } });
   },
+  async listCommentsByPostId(postId: string) {
+    return prisma.comment.findMany({ where: { postId } });
+  },
 }; 

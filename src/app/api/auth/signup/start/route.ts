@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendMail } from '../../../../infrastructure/emailService';
+import { sendMail } from '@/infrastructure/emailService';
 import { PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
   if (!firstname || !lastname || !birthday || !gender || !email) {
     return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
   }
-  // Check if user already exists
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json({ error: 'User already exists.' }, { status: 400 });

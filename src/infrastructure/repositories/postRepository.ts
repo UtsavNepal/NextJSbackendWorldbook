@@ -10,16 +10,8 @@ export const postRepository = {
     content?: string;
     image?: string;
     visibility?: string;
-    taggedProfiles?: {
-      connect: {
-        id: string;
-      }[];
-    };
-    likes?: {
-      connect: {
-        id: string;
-      }[];
-    };
+    taggedProfiles?: { connect: { id: string }[] };
+    likes?: { connect: { id: string }[] };
   }) {
     return prisma.post.create({ data });
   },
@@ -31,5 +23,19 @@ export const postRepository = {
   },
   async deletePost(id: string) {
     return prisma.post.delete({ where: { id } });
+  },
+  async likePost(postId: string, profileId: string) {
+    return prisma.post.update({
+      where: { id: postId },
+      data: { likes: { connect: { id: profileId } } },
+      include: { likes: true },
+    });
+  },
+  async unlikePost(postId: string, profileId: string) {
+    return prisma.post.update({
+      where: { id: postId },
+      data: { likes: { disconnect: { id: profileId } } },
+      include: { likes: true },
+    });
   },
 };

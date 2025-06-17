@@ -55,4 +55,7 @@ export const userService = {
   async deleteUser(id: string): Promise<void> {
     await userRepository.deleteUser(id);
   },
+  async searchUsers(query: string) {
+    return userRepository.searchUsers(query);
+  },
 }; 

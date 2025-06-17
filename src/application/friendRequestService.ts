@@ -35,4 +35,19 @@ export const friendRequestService = {
   async deleteFriendRequest(id: string): Promise<void> {
     await friendRequestRepository.deleteFriendRequest(id);
   },
+  async acceptFriendRequest(userId: string, requestId: string) {
+    return friendRequestRepository.acceptFriendRequest(userId, requestId);
+  },
+  async rejectFriendRequest(userId: string, requestId: string) {
+    return friendRequestRepository.rejectFriendRequest(userId, requestId);
+  },
+  async cancelFriendRequest(userId: string, requestId: string) {
+    return friendRequestRepository.cancelFriendRequest(userId, requestId);
+  },
+  async listFriends(userId: string) {
+    return friendRequestRepository.listFriends(userId);
+  },
+  async deleteFriend(userId: string, friendId: string) {
+    return friendRequestRepository.deleteFriend(userId, friendId);
+  },
 };

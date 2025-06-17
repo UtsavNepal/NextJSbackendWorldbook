@@ -36,4 +36,8 @@ export const commentService = {
   async deleteComment(id: string): Promise<void> {
     await commentRepository.deleteComment(id);
   },
+  async getCommentsByPostId(postId: string): Promise<Comment[]> {
+    const comments = await commentRepository.listCommentsByPostId(postId);
+    return comments.map(mapComment).filter(Boolean) as Comment[];
+  },
 }; 

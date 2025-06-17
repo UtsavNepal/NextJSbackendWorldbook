@@ -1,16 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { profileService } from '../../../application/profileService';
+import { getUserIdFromRequest } from '../../../utils/tokenUtils';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams, pathname } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const profile = await profileService.getProfileById(id);
-  if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
-  return NextResponse.json(profile);
+  const meMatch = pathname.endsWith('/me');
+  const publicMatch = pathname.match(/\/profile\/([\w-]+)\/public$/);
+  const followersMatch = pathname.match(/\/profile\/([\w-]+)\/followers$/);
+  const followingMatch = pathname.match(/\/profile\/([\w-]+)\/following$/);
+  if (meMatch) {
+    const userId = await getUserIdFromRequest(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const profile = await profileService.getProfileById(userId);
+    return NextResponse.json(profile);
+  }
+  if (publicMatch) {
+    const profileId = publicMatch[1];
+    const profile = await profileService.getPublicProfile(profileId);
+    return NextResponse.json(profile);
+  }
+  if (followersMatch) {
+    const profileId = followersMatch[1];
+    const followers = await profileService.getFollowers(profileId);
+    return NextResponse.json(followers);
+  }
+  if (followingMatch) {
+    const profileId = followingMatch[1];
+    const following = await profileService.getFollowing(profileId);
+    return NextResponse.json(following);
+  }
+  if (id) {
+    const profile = await profileService.getProfileById(id);
+    if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    return NextResponse.json(profile);
+  }
+  const profiles = await profileService.listProfiles();
+  return NextResponse.json(profiles);
 }
 
 export async function POST(req: NextRequest) {
+  const { pathname } = new URL(req.url);
+  const followMatch = pathname.match(/\/profile\/([\w-]+)\/follow$/);
+  if (followMatch) {
+    const profileId = followMatch[1];
+    const userId = await getUserIdFromRequest(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const result = await profileService.followProfile(userId, profileId);
+    return NextResponse.json(result);
+  }
   const body = await req.json();
   if (!body.userId) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
@@ -39,6 +77,15 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { pathname } = new URL(req.url);
+  const unfollowMatch = pathname.match(/\/profile\/([\w-]+)\/unfollow$/);
+  if (unfollowMatch) {
+    const profileId = unfollowMatch[1];
+    const userId = await getUserIdFromRequest(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const result = await profileService.unfollowProfile(userId, profileId);
+    return NextResponse.json(result);
+  }
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

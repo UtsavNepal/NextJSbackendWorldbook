@@ -34,5 +34,15 @@ export const userRepository = {
   async deleteUser(id: string) {
     return prisma.user.delete({ where: { id } });
   },
-  // Add more methods as needed
+  async searchUsers(query: string) {
+    return prisma.user.findMany({
+      where: {
+        OR: [
+          { email: { contains: query, mode: 'insensitive' } },
+          { firstname: { contains: query, mode: 'insensitive' } },
+          { lastname: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+    });
+  },
 }; 

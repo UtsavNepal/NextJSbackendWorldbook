@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { commentService } from '../../../application/commentService';
+import { Comment } from '../../../domain/comment';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -8,6 +9,25 @@ export async function GET(req: NextRequest) {
     const comment = await commentService.getCommentById(id);
     if (!comment) return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
     return NextResponse.json(comment);
+  }
+  const { pathname } = new URL(req.url);
+  const match = pathname.match(/\/post\/(.+)\/comments$/);
+  if (match) {
+    const postId = match[1];
+    // Fetch all comments for the post
+    const comments: Comment[] = await commentService.getCommentsByPostId(postId);
+    // Build nested structure
+    function nest(comments: Comment[]): Comment[] {
+      const map: { [id: string]: Comment & { replies: Comment[] } } = {};
+      const roots: (Comment & { replies: Comment[] })[] = [];
+      comments.forEach((c: Comment) => { map[c.id] = { ...c, replies: [] }; });
+      comments.forEach((c: Comment) => {
+        if (c.parentId && map[c.parentId]) map[c.parentId].replies.push(map[c.id]);
+        else roots.push(map[c.id]);
+      });
+      return roots;
+    }
+    return NextResponse.json(nest(comments));
   }
   // List all comments if no id is provided
   const comments = await commentService.listComments();
@@ -24,7 +44,7 @@ export async function POST(req: NextRequest) {
       profileId: body.profileId,
       postId: body.postId,
       comment: body.comment,
-      parentId: body.parentId,
+      parentId: body.parentId ?? null,
     });
     return NextResponse.json(comment, { status: 201 });
   } catch (error: any) {

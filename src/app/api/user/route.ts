@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { userService } from '../../../application/userService';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams, pathname } = new URL(req.url);
+  if (pathname.endsWith('/user/search')) {
+    const query = searchParams.get('query');
+    if (!query) return NextResponse.json([]);
+    const users = await userService.searchUsers(query);
+    return NextResponse.json(users);
+  }
   const id = searchParams.get('id');
   if (id) {
     const user = await userService.getUserById(id);
