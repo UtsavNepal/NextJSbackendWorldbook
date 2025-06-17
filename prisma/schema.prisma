@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  firstname      String?
+  lastname       String?
+  birthday       DateTime?
+  gender         String?
+  emailActive    Boolean   @default(false)
+  profilePicture String?
+  isActive       Boolean   @default(true)
+  isStaff        Boolean   @default(false)
+  isVerified     Boolean   @default(false)
+  otp            String?
+  joinedAt       DateTime?
+  password       String
+  profile        Profile?
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friendships1    Friendship[] @relation("FriendshipUser1")
+  friendships2    Friendship[] @relation("FriendshipUser2")
+  conversations   Conversation[] @relation("Participants")
+  messages        Message[]
+  reactions       Reaction[]
+}
+
+model Profile {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @unique
+  profilePicture String?
+  username       String   @unique
+  bio            String?
+  totalPosts     Int      @default(0)
+  totalFriends   Int      @default(0)
+  posts          Post[]
+  comments       Comment[]
+  profilePictureHistory ProfilePictureHistory[]
+  notifications  Notification[] @relation("RecipientNotifications")
+  actorNotifications Notification[] @relation("ActorNotifications")
+  following       Follow[] @relation("Following")
+  followers       Follow[] @relation("Followers")
+  taggedPosts     Post[]   @relation("TaggedPosts")
+  likedPosts      Post[]   @relation("LikedPosts")
+}
+
+model ProfilePictureHistory {
+  id             String   @id @default(uuid())
+  profile        Profile @relation(fields: [profileId], references: [id])
+  profileId      String
+  profilePicture String
+  updatedAt      DateTime @default(now())
+}
+
+model Post {
+  id             String   @id @default(uuid())
+  profile        Profile @relation(fields: [profileId], references: [id])
+  profileId      String
+  content        String?
+  image          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  taggedProfiles Profile[] @relation("TaggedPosts")
+  visibility     String   @default("public")
+  likes          Profile[] @relation("LikedPosts")
+  comments       Comment[]
+  notifications  Notification[] @relation("RelatedPostNotifications")
+}
+
+model Comment {
+  id             String   @id @default(uuid())
+  profile        Profile @relation(fields: [profileId], references: [id])
+  profileId      String
+  post           Post    @relation(fields: [postId], references: [id])
+  postId         String
+  comment        String
+  createdAt      DateTime @default(now())
+  parent         Comment? @relation("ParentComment", fields: [parentId], references: [id])
+  parentId       String?
+  replies        Comment[] @relation("ParentComment")
+  notifications  Notification[] @relation("RelatedCommentNotifications")
+}
+
+model FriendRequest {
+  id             String   @id @default(uuid())
+  fromUser       User     @relation("SentFriendRequests", fields: [fromUserId], references: [id])
+  fromUserId     String
+  toUser         User     @relation("ReceivedFriendRequests", fields: [toUserId], references: [id])
+  toUserId       String
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+}
+
+model Friendship {
+  id             String   @id @default(uuid())
+  user1          User     @relation("FriendshipUser1", fields: [user1Id], references: [id])
+  user1Id        String
+  user2          User     @relation("FriendshipUser2", fields: [user2Id], references: [id])
+  user2Id        String
+  createdAt      DateTime @default(now())
+
+  @@unique([user1Id, user2Id])
+}
+
+model Follow {
+  id             String   @id @default(uuid())
+  follower       Profile  @relation("Following", fields: [followerId], references: [id])
+  followerId     String
+  following      Profile  @relation("Followers", fields: [followingId], references: [id])
+  followingId    String
+  createdAt      DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Notification {
+  id             String   @id @default(uuid())
+  recipient      Profile  @relation("RecipientNotifications", fields: [recipientId], references: [id])
+  recipientId    String
+  actor          Profile  @relation("ActorNotifications", fields: [actorId], references: [id])
+  actorId        String
+  notificationType String
+  message        String
+  relatedPost    Post?    @relation("RelatedPostNotifications", fields: [relatedPostId], references: [id])
+  relatedPostId  String?
+  relatedComment Comment? @relation("RelatedCommentNotifications", fields: [relatedCommentId], references: [id])
+  relatedCommentId String?
+  isRead         Boolean  @default(false)
+  timestamp      DateTime @default(now())
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  name           String?
+  isGroup        Boolean  @default(false)
+  participants   User[]   @relation("Participants")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  messages       Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  sender         User     @relation(fields: [senderId], references: [id])
+  senderId       String
+  text           String?
+  imageUrl       String?
+  gifUrl         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deleted        Boolean  @default(false)
+  reactions      Reaction[]
+}
+
+model Reaction {
+  id             String   @id @default(uuid())
+  message        Message  @relation(fields: [messageId], references: [id])
+  messageId      String
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  emoji          String
+  createdAt      DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+}
+
+model SignupOtp {
+  email      String   @id
+  otp        String
+  firstname  String
+  lastname   String
+  birthday   DateTime
+  gender     String
+  verified   Boolean @default(false)
+  createdAt  DateTime @default(now())
+}
