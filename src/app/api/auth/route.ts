@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '../../../utils/tokenUtils';
-import nodemailer from 'nodemailer';
 import { PrismaClient } from '@/generated/prisma';
 import bcrypt from 'bcryptjs';
+import { sendMail } from '@/infrastructure/emailService';
 
 const prisma = new PrismaClient();
 const otpStore: { [email: string]: { otp: string; expires: number } } = {};
@@ -18,17 +18,7 @@ export async function POST(req: NextRequest) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000 };
     // Send email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: Number(process.env.EMAIL_PORT),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    await sendMail({
       to: email,
       subject: 'Password Reset OTP',
       text: `Your OTP is: ${otp}`,
