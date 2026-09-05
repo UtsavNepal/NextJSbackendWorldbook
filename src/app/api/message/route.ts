@@ -1,62 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { messageService } from '../../../application/messageService';
+import { NextRequest } from 'next/server';
+import { prisma } from '@/infrastructure/prisma';
+import { fail, ok, requireUserId } from '@/utils/http';
+import { serializeMessage } from '@/utils/serializers';
+import { saveUploadedFile } from '@/utils/uploadFile';
+
+const messageInclude = {
+  sender: { include: { profile: true } },
+  reactions: { include: { user: { include: { profile: true } } } },
+};
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (id) {
-    const msg = await messageService.getMessageById(id);
-    if (!msg) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
-    return NextResponse.json(msg);
-  }
-  // List all messages if no id is provided
-  const msgs = await messageService.listMessages();
-  return NextResponse.json(msgs);
+  const userId = await requireUserId(req);
+  if (!userId) return fail('Unauthorized', 401);
+  const conversationId = new URL(req.url).searchParams.get('conversation')
+    || new URL(req.url).searchParams.get('conversationId');
+  if (!conversationId) return fail('Missing conversation');
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, participants: { some: { id: userId } } },
+  });
+  if (!conversation) return fail('Conversation not found', 404);
+  const messages = await prisma.message.findMany({
+    where: { conversationId },
+    include: messageInclude,
+    orderBy: { createdAt: 'asc' },
+  });
+  return ok(messages.map(serializeMessage));
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  if (!body.conversationId || !body.senderId) {
-    return NextResponse.json({ error: 'Missing conversationId or senderId' }, { status: 400 });
-  }
-  try {
-    const msg = await messageService.createMessage({
-      conversationId: body.conversationId,
-      senderId: body.senderId,
-      text: body.text,
-      imageUrl: body.imageUrl,
-      gifUrl: body.gifUrl,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deleted: false,
-    });
-    return NextResponse.json(msg, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create message' }, { status: 500 });
-  }
-}
+  const userId = await requireUserId(req);
+  if (!userId) return fail('Unauthorized', 401);
+  const contentType = req.headers.get('content-type') || '';
+  let conversationId = '';
+  let text: string | undefined;
+  let gifUrl: string | undefined;
+  let imageUrl: string | undefined;
 
-export async function PUT(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const body = await req.json();
-  try {
-    const updated = await messageService.updateMessage(id, body);
-    return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update message' }, { status: 500 });
+  if (contentType.includes('multipart/form-data')) {
+    const form = await req.formData();
+    conversationId = String(form.get('conversation') || form.get('conversationId') || '');
+    text = String(form.get('text') || '') || undefined;
+    gifUrl = String(form.get('gif_url') || form.get('gifUrl') || '') || undefined;
+    const file = form.get('image');
+    if (file instanceof File && file.size > 0) {
+      imageUrl = await saveUploadedFile(file, 'messages', userId);
+    }
+  } else {
+    const body = await req.json();
+    conversationId = body.conversationId || body.conversation;
+    text = body.text;
+    gifUrl = body.gif_url || body.gifUrl;
+    imageUrl = body.imageUrl || body.image;
   }
-}
 
-export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  try {
-    await messageService.deleteMessage(id);
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete message' }, { status: 500 });
-  }
-} 
+  if (!conversationId) return fail('Missing conversationId');
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, participants: { some: { id: userId } } },
+  });
+  if (!conversation) return fail('Conversation not found', 404);
+
+  const message = await prisma.message.create({
+    data: {
+      conversationId,
+      senderId: userId,
+      text,
+      gifUrl,
+      imageUrl,
+    },
+    include: messageInclude,
+  });
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { updatedAt: new Date() },
+  });
+  return ok(serializeMessage(message), 201);
+}

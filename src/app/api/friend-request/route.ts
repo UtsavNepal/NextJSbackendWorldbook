@@ -1,94 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { friendRequestService } from '../../../application/friendRequestService';
-import { getUserIdFromRequest } from '../../../utils/tokenUtils';
+import { NextRequest } from 'next/server';
+import { prisma } from '@/infrastructure/prisma';
+import { fail, ok, readJson, requireUserId } from '@/utils/http';
+import { friendRequestInclude, serializeFriendRequest } from '@/utils/serializers';
+import { getProfileForUser, notify, resolveProfileId } from '@/utils/social';
 
 export async function GET(req: NextRequest) {
-  const { searchParams, pathname } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (id) {
-    const fr = await friendRequestService.getFriendRequestById(id);
-    if (!fr) return NextResponse.json({ error: 'FriendRequest not found' }, { status: 404 });
-    return NextResponse.json(fr);
-  }
-  if (pathname.endsWith('/friend/list')) {
-    const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const friends = await friendRequestService.listFriends(userId);
-    return NextResponse.json(friends);
-  }
-  // List all friend requests if no id is provided
-  const frs = await friendRequestService.listFriendRequests();
-  return NextResponse.json(frs);
+  const userId = await requireUserId(req);
+  if (!userId) return fail('Unauthorized', 401);
+  const requests = await prisma.friendRequest.findMany({
+    where: { toUserId: userId, status: 'pending' },
+    include: friendRequestInclude,
+    orderBy: { createdAt: 'desc' },
+  });
+  return ok(requests.map(serializeFriendRequest));
 }
 
 export async function POST(req: NextRequest) {
-  const { pathname } = new URL(req.url);
-  if (pathname.endsWith('/friend-request/accept')) {
-    const body = await req.json();
-    const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const result = await friendRequestService.acceptFriendRequest(userId, body.requestId);
-    return NextResponse.json(result);
+  const userId = await requireUserId(req);
+  if (!userId) return fail('Unauthorized', 401);
+  const body = await readJson(req);
+  const rawTarget = body.to_user_id || body.toUserId || body.userId;
+  if (!rawTarget) return fail('Missing to_user_id');
+
+  let toUserId = String(rawTarget);
+  const profileId = await resolveProfileId(toUserId);
+  if (profileId) {
+    const targetProfile = await prisma.profile.findUnique({ where: { id: profileId } });
+    if (targetProfile) toUserId = targetProfile.userId;
   }
-  if (pathname.endsWith('/friend-request/reject')) {
-    const body = await req.json();
-    const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const result = await friendRequestService.rejectFriendRequest(userId, body.requestId);
-    return NextResponse.json(result);
-  }
-  if (pathname.endsWith('/friend-request/cancel')) {
-    const body = await req.json();
-    const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const result = await friendRequestService.cancelFriendRequest(userId, body.requestId);
-    return NextResponse.json(result);
-  }
-  if (pathname.endsWith('/friend/delete')) {
-    const body = await req.json();
-    const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const result = await friendRequestService.deleteFriend(userId, body.friendId);
-    return NextResponse.json(result);
-  }
-  const body = await req.json();
-  if (!body.fromUserId || !body.toUserId) {
-    return NextResponse.json({ error: 'Missing fromUserId or toUserId' }, { status: 400 });
-  }
-  try {
-    const fr = await friendRequestService.createFriendRequest({
-        fromUserId: body.fromUserId,
-        toUserId: body.toUserId,
-        status: body.status ?? 'pending',
-        createdAt: new Date()
+
+  if (toUserId === userId) return fail('Cannot friend yourself');
+  const existing = await prisma.friendRequest.findFirst({
+    where: {
+      OR: [
+        { fromUserId: userId, toUserId, status: 'pending' },
+        { fromUserId: toUserId, toUserId: userId, status: 'pending' },
+      ],
+    },
+  });
+  if (existing) return fail('Friend request already sent.');
+
+  const request = await prisma.friendRequest.create({
+    data: { fromUserId: userId, toUserId, status: 'pending' },
+    include: friendRequestInclude,
+  });
+  const actor = await getProfileForUser(userId);
+  const recipient = await getProfileForUser(toUserId);
+  if (actor && recipient) {
+    await notify({
+      recipientId: recipient.id,
+      actorId: actor.id,
+      notificationType: 'friend_request',
+      message: `${actor.username} sent you a friend request`,
     });
-    return NextResponse.json(fr, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create friend request' }, { status: 500 });
   }
+  return ok(serializeFriendRequest(request), 201);
 }
-
-export async function PUT(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const body = await req.json();
-  try {
-    const updated = await friendRequestService.updateFriendRequest(id, body);
-    return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update friend request' }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  try {
-    await friendRequestService.deleteFriendRequest(id);
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete friend request' }, { status: 500 });
-  }
-} 

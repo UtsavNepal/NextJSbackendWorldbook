@@ -12,6 +12,7 @@ function mapProfile(prismaProfile: any): Profile | null {
     totalPosts: prismaProfile.totalPosts,
     totalFriends: prismaProfile.totalFriends,
     createdAt: prismaProfile.createdAt,
+    coverPhoto: prismaProfile.coverPhoto,
   };
 }
 

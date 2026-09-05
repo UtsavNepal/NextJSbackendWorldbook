@@ -6,7 +6,8 @@ export interface Profile {
   bio: string | null;
   totalPosts: number;
   totalFriends: number;
-  createdAt: Date;
+  coverPhoto?: string | null;
+  createdAt?: Date;
 }
 
 

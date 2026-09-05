@@ -1,27 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@/generated/prisma';
+import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
-const prisma = new PrismaClient();
+import { prisma } from '@/infrastructure/prisma';
+import { fail, ok, readJson } from '@/utils/http';
+import { serializeUser } from '@/utils/serializers';
+import { uniqueUsername } from '@/utils/social';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const body = await readJson(req);
   const { email, password } = body;
   if (!email || !password) {
-    return NextResponse.json({ error: 'Missing email or password.' }, { status: 400 });
+    return fail('Missing email or password.');
   }
   const record = await prisma.signupOtp.findUnique({ where: { email } });
   if (!record || !record.verified) {
-    return NextResponse.json({ error: 'OTP not verified.' }, { status: 400 });
+    return fail('OTP not verified.');
   }
-  // Create user
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return fail('User already exists.');
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: {
       email: record.email,
-      firstname: record.firstname,
-      lastname: record.lastname,
-      birthday: record.birthday,
-      gender: record.gender,
+      firstname: body.firstname || record.firstname,
+      lastname: body.lastname || record.lastname,
+      birthday: body.birthday ? new Date(body.birthday) : record.birthday,
+      gender: body.gender || record.gender,
       password: hashedPassword,
       emailActive: true,
       isActive: true,
@@ -32,7 +39,26 @@ export async function POST(req: NextRequest) {
       otp: null,
     },
   });
-  // Delete temp record
+
+  await prisma.profile.create({
+    data: {
+      userId: user.id,
+      username: await uniqueUsername(user.email),
+      bio: '',
+      profilePicture: null,
+      totalPosts: 0,
+      totalFriends: 0,
+    },
+  });
+
   await prisma.signupOtp.delete({ where: { email } });
-  return NextResponse.json({ message: 'Registration completed successfully.', user });
-} 
+  const fullUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { profile: true },
+  });
+
+  return ok({
+    message: 'Registration completed successfully.',
+    user: serializeUser(fullUser),
+  });
+}

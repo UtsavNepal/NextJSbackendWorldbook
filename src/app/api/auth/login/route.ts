@@ -1,25 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { userRepository } from '../../../../infrastructure/repositories/userRepository';
+import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { userRepository } from '@/infrastructure/repositories/userRepository';
+import { fail, ok, readJson } from '@/utils/http';
+import { serializeUser } from '@/utils/serializers';
+import { prisma } from '@/infrastructure/prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const body = await readJson(req);
   if (!body.email || !body.password) {
-    return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
+    return fail('Missing email or password', 400);
   }
   const user = await userRepository.getUserByEmail(body.email);
-  if (!user) {
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-  }
+  if (!user) return fail('Invalid credentials', 401);
   const valid = await bcrypt.compare(body.password, user.password);
-  if (!valid) {
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-  }
+  if (!valid) return fail('Invalid credentials', 401);
+
   const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-  // Return user info (excluding password)
-  const { password, ...userInfo } = user;
-  return NextResponse.json({ token, user: userInfo });
-} 
+  const fullUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { profile: true },
+  });
+  const safeUser = serializeUser(fullUser);
+
+  return ok({
+    token,
+    access: token,
+    refresh: token,
+    user: safeUser,
+  });
+}
