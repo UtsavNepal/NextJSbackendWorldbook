@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '../../../utils/tokenUtils';
-import { PrismaClient } from '@/generated/prisma';
 import bcrypt from 'bcryptjs';
 import { sendMail } from '@/infrastructure/emailService';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/infrastructure/prisma';
 const otpStore: { [email: string]: { otp: string; expires: number } } = {};
 
 export async function POST(req: NextRequest) {

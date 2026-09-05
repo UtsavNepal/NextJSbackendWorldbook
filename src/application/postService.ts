@@ -1,7 +1,6 @@
 import { postRepository } from '../infrastructure/repositories/postRepository';
 import { Post } from '../domain/post';
-import { PrismaClient } from '@/generated/prisma';
-const prisma = new PrismaClient();
+import { prisma } from '@/infrastructure/prisma';
 
 function mapPost(prismaPost: Post | null): Post | null {
   if (!prismaPost) return null;

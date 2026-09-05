@@ -1,5 +1,5 @@
-import { Prisma, PrismaClient } from '@/generated/prisma';
-const prisma = new PrismaClient();
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/infrastructure/prisma';
 
 export const messageRepository = {
   async getMessageById(id: string) {

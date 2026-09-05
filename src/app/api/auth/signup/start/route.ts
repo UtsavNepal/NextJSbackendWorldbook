@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendMail } from '@/infrastructure/emailService';
-import { PrismaClient } from '@/generated/prisma';
-const prisma = new PrismaClient();
+import { prisma } from '@/infrastructure/prisma';
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();

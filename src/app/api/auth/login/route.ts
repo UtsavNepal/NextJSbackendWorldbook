@@ -6,6 +6,9 @@ import { fail, ok, readJson } from '@/utils/http';
 import { serializeUser } from '@/utils/serializers';
 import { prisma } from '@/infrastructure/prisma';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 export async function POST(req: NextRequest) {

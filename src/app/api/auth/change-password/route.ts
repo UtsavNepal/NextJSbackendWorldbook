@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
   if (!userId) return fail('Unauthorized', 401);
