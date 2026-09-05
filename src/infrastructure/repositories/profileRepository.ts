@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const profileRepository = {
@@ -33,7 +33,7 @@ export const profileRepository = {
   async listProfiles() {
     return prisma.profile.findMany();
   },
-  async updateProfile(id: string, data: any) {
+  async updateProfile(id: string, data: Prisma.ProfileUncheckedUpdateInput) {
     return prisma.profile.update({ where: { id }, data });
   },
   async deleteProfile(id: string) {

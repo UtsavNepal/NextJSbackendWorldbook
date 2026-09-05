@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const conversationRepository = {
@@ -17,7 +17,7 @@ export const conversationRepository = {
   async listConversations() {
     return prisma.conversation.findMany();
   },
-  async updateConversation(id: string, data: any) {
+  async updateConversation(id: string, data: Prisma.ConversationUncheckedUpdateInput) {
     return prisma.conversation.update({ where: { id }, data });
   },
   async deleteConversation(id: string) {

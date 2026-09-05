@@ -4,7 +4,10 @@ import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { conversationInclude, serializeConversation } from '@/utils/serializers';
 import { requestFieldsForNewConversation } from '@/utils/conversationRequest';
 
-function isVisibleToViewer(conversation: any, userId: string) {
+function isVisibleToViewer(
+  conversation: { requestStatus?: string | null; requestedById?: string | null },
+  userId: string
+) {
   const status = conversation.requestStatus || 'accepted';
   if (status === 'declined' && conversation.requestedById !== userId) return false;
   return true;
@@ -29,10 +32,15 @@ export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
   if (!userId) return fail('Unauthorized', 401);
   const body = await readJson(req);
+  const extraParticipants = Array.isArray(body.participants)
+    ? body.participants
+    : Array.isArray(body.participantIds)
+      ? body.participantIds
+      : [];
   const participantIds = Array.from(
-    new Set([userId, ...(body.participants || body.participantIds || [])].map(String))
+    new Set([userId, ...extraParticipants].map(String))
   );
-  const isGroup = body.is_group ?? body.isGroup ?? participantIds.length > 2;
+  const isGroup = Boolean(body.is_group ?? body.isGroup ?? participantIds.length > 2);
 
   if (!isGroup && participantIds.length === 2) {
     const existing = await prisma.conversation.findFirst({
@@ -53,7 +61,7 @@ export async function POST(req: NextRequest) {
   const requestFields = await requestFieldsForNewConversation(participantIds, userId, isGroup);
   const conversation = await prisma.conversation.create({
     data: {
-      name: body.name,
+      name: typeof body.name === 'string' ? body.name : undefined,
       isGroup,
       requestStatus: requestFields.requestStatus,
       requestedById: requestFields.requestedById,

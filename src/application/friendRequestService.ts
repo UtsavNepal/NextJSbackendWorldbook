@@ -1,7 +1,7 @@
 import { friendRequestRepository } from '../infrastructure/repositories/friendRequestRepository';
 import { FriendRequest } from '../domain/friendRequest';
 
-function mapFriendRequest(prismaFR: any): FriendRequest | null {
+function mapFriendRequest(prismaFR: FriendRequest | null): FriendRequest | null {
   if (!prismaFR) return null;
   return {
     id: prismaFR.id,

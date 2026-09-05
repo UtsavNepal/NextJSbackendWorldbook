@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       password: hashedPassword,
     });
     return NextResponse.json(user, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to signup' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to signup' }, { status: 500 });
   }
 } 

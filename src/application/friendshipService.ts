@@ -1,7 +1,7 @@
 import { friendshipRepository } from '../infrastructure/repositories/friendshipRepository';
 import { Friendship } from '../domain/friendship';
 
-function mapFriendship(prismaFS: any): Friendship | null {
+function mapFriendship(prismaFS: Friendship | null): Friendship | null {
   if (!prismaFS) return null;
   return {
     id: prismaFS.id,

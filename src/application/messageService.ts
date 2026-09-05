@@ -1,15 +1,25 @@
 import { messageRepository } from '../infrastructure/repositories/messageRepository';
 import { Message } from '../domain/message';
 
-function mapMessage(prismaMsg: any): Message | null {
+function mapMessage(prismaMsg: {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text?: string | null;
+  imageUrl?: string | null;
+  gifUrl?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deleted: boolean;
+} | null): Message | null {
   if (!prismaMsg) return null;
   return {
     id: prismaMsg.id,
     conversationId: prismaMsg.conversationId,
     senderId: prismaMsg.senderId,
-    text: prismaMsg.text,
-    imageUrl: prismaMsg.imageUrl,
-    gifUrl: prismaMsg.gifUrl,
+    text: prismaMsg.text ?? undefined,
+    imageUrl: prismaMsg.imageUrl ?? undefined,
+    gifUrl: prismaMsg.gifUrl ?? undefined,
     createdAt: prismaMsg.createdAt,
     updatedAt: prismaMsg.updatedAt,
     deleted: prismaMsg.deleted,

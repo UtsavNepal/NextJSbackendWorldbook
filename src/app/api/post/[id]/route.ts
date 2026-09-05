@@ -24,7 +24,12 @@ async function updatePost(req: NextRequest, id: string) {
   if (existing.profileId !== profile.id) return fail('Forbidden', 403);
 
   const contentType = req.headers.get('content-type') || '';
-  let data: any = {};
+  let data: {
+    content?: string;
+    visibility?: string;
+    images?: string[];
+    image?: string | null;
+  } = {};
   const existingImages = (existing.images?.length ? existing.images : existing.image ? [existing.image] : []) as string[];
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData();

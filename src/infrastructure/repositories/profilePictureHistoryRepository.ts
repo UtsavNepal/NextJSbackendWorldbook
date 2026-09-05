@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const profilePictureHistoryRepository = {
@@ -15,7 +15,7 @@ export const profilePictureHistoryRepository = {
   async listProfilePictureHistories() {
     return prisma.profilePictureHistory.findMany();
   },
-  async updateProfilePictureHistory(id: string, data: any) {
+  async updateProfilePictureHistory(id: string, data: Prisma.ProfilePictureHistoryUncheckedUpdateInput) {
     return prisma.profilePictureHistory.update({ where: { id }, data });
   },
   async deleteProfilePictureHistory(id: string) {

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const followRepository = {
@@ -15,7 +15,7 @@ export const followRepository = {
   async listFollows() {
     return prisma.follow.findMany();
   },
-  async updateFollow(id: string, data: any) {
+  async updateFollow(id: string, data: Prisma.FollowUncheckedUpdateInput) {
     return prisma.follow.update({ where: { id }, data });
   },
   async deleteFollow(id: string) {

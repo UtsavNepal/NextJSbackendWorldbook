@@ -1,12 +1,18 @@
 import { profilePictureHistoryRepository } from '../infrastructure/repositories/profilePictureHistoryRepository';
 import { ProfilePictureHistory } from '../domain/profilePictureHistory';
 
-function mapProfilePictureHistory(prismaPPH: any): ProfilePictureHistory | null {
+function mapProfilePictureHistory(prismaPPH: {
+  id: string;
+  profileId: string;
+  profilePicture?: string;
+  profilePictureUrl?: string;
+  updatedAt: Date;
+} | null): ProfilePictureHistory | null {
   if (!prismaPPH) return null;
   return {
     id: prismaPPH.id,
     profileId: prismaPPH.profileId,
-    profilePictureUrl: prismaPPH.profilePicture,
+    profilePictureUrl: prismaPPH.profilePicture ?? prismaPPH.profilePictureUrl ?? '',
     updatedAt: prismaPPH.updatedAt,
   };
 }

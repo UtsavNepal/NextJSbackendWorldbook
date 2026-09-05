@@ -3,7 +3,7 @@ import { Post } from '../domain/post';
 import { PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
-function mapPost(prismaPost: any): Post | null {
+function mapPost(prismaPost: Post | null): Post | null {
   if (!prismaPost) return null;
   return {
     id: prismaPost.id,

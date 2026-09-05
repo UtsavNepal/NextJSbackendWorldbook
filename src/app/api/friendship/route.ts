@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
     });
     return NextResponse.json(fs, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create friendship' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create friendship' }, { status: 500 });
   }
 }
 
@@ -39,8 +39,8 @@ export async function PUT(req: NextRequest) {
   try {
     const updated = await friendshipService.updateFriendship(id, body);
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update friendship' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update friendship' }, { status: 500 });
   }
 }
 
@@ -51,7 +51,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await friendshipService.deleteFriendship(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete friendship' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete friendship' }, { status: 500 });
   }
 } 

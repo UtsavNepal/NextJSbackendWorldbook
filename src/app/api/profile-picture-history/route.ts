@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date(),
     });
     return NextResponse.json(pph, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create profile picture history' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create profile picture history' }, { status: 500 });
   }
 }
 
@@ -39,8 +39,8 @@ export async function PUT(req: NextRequest) {
   try {
     const updated = await profilePictureHistoryService.updateProfilePictureHistory(id, body);
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update profile picture history' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update profile picture history' }, { status: 500 });
   }
 }
 
@@ -51,7 +51,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await profilePictureHistoryService.deleteProfilePictureHistory(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete profile picture history' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete profile picture history' }, { status: 500 });
   }
 }

@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       parentId: body.parentId ?? null,
     });
     return NextResponse.json(comment, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create comment' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create comment' }, { status: 500 });
   }
 }
 
@@ -60,8 +60,8 @@ export async function PUT(req: NextRequest) {
   try {
     const updated = await commentService.updateComment(id, body);
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update comment' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update comment' }, { status: 500 });
   }
 }
 
@@ -72,7 +72,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await commentService.deleteComment(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete comment' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete comment' }, { status: 500 });
   }
 } 

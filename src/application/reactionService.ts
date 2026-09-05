@@ -1,7 +1,7 @@
 import { reactionRepository } from '../infrastructure/repositories/reactionRepository';
 import { Reaction } from '../domain/reaction';
 
-function mapReaction(prismaReaction: any): Reaction | null {
+function mapReaction(prismaReaction: Reaction | null): Reaction | null {
   if (!prismaReaction) return null;
   return {
     id: prismaReaction.id,

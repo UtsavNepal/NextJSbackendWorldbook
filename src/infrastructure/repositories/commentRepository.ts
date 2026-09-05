@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const commentRepository = {
@@ -16,7 +16,7 @@ export const commentRepository = {
   async listComments() {
     return prisma.comment.findMany();
   },
-  async updateComment(id: string, data: any) {
+  async updateComment(id: string, data: Prisma.CommentUncheckedUpdateInput) {
     return prisma.comment.update({ where: { id }, data });
   },
   async deleteComment(id: string) {

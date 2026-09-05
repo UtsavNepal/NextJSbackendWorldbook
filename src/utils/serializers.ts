@@ -1,6 +1,124 @@
 import { censorText } from './censorText';
 
-function stripUser(user: any) {
+type LooseUser = {
+  id?: string;
+  email?: string;
+  firstname?: string | null;
+  lastname?: string | null;
+  birthday?: Date | string | null;
+  gender?: string | null;
+  joinedAt?: Date | string | null;
+  profilePicture?: string | null;
+  isVerified?: boolean;
+  isActive?: boolean;
+  profile?: LooseProfile | null;
+};
+
+type LooseProfile = {
+  id?: string;
+  userId?: string;
+  username?: string;
+  bio?: string | null;
+  profilePicture?: string | null;
+  coverPhoto?: string | null;
+  totalPosts?: number;
+  totalFriends?: number;
+  posts?: LoosePost[];
+  taggedPosts?: LoosePost[];
+  followers?: unknown[];
+  following?: unknown[];
+  friends?: unknown[];
+  user?: LooseUser | null;
+};
+
+type LoosePost = {
+  id?: string;
+  profileId?: string;
+  content?: string | null;
+  image?: string | null;
+  images?: string[];
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  visibility?: string;
+  type?: string;
+  likes?: Array<{ id?: string }>;
+  comments?: LooseComment[];
+  taggedProfiles?: LooseProfile[];
+  profile?: LooseProfile | null;
+};
+
+type LooseComment = {
+  id?: string;
+  comment?: string;
+  createdAt?: Date | string;
+  parentId?: string | null;
+  profileId?: string;
+  profile?: LooseProfile | null;
+  replies?: LooseComment[];
+};
+
+type LooseFriendship = {
+  is_friend?: boolean;
+  friend_request_sent?: boolean;
+  friend_request_received?: boolean;
+  friend_request_id?: string | null;
+};
+
+type LooseFriendRequest = {
+  id?: string;
+  status?: string;
+  createdAt?: Date | string;
+  fromUser?: (LooseUser & { profile?: LooseProfile | null }) | null;
+  toUser?: (LooseUser & { profile?: LooseProfile | null }) | null;
+};
+
+type LooseConversation = {
+  id?: string;
+  name?: string | null;
+  isGroup?: boolean;
+  participants?: LooseUser[];
+  messages?: LooseMessage[];
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  requestStatus?: string | null;
+  requestedById?: string | null;
+};
+
+type LooseMessage = {
+  id?: string;
+  conversationId?: string;
+  sender?: LooseUser | null;
+  text?: string | null;
+  imageUrl?: string | null;
+  gifUrl?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  deleted?: boolean;
+  hiddenFor?: string[];
+  reactions?: LooseReaction[];
+};
+
+type LooseReaction = {
+  id?: string;
+  user?: LooseUser | null;
+  messageId?: string;
+  emoji?: string;
+  createdAt?: Date | string;
+};
+
+type LooseNotification = {
+  id?: string;
+  recipient?: LooseProfile | null;
+  actor?: LooseProfile | null;
+  notificationType?: string;
+  message?: string;
+  relatedPost?: LoosePost | null;
+  relatedComment?: LooseComment | null;
+  isRead?: boolean;
+  timestamp?: Date | string;
+};
+
+function stripUser(user?: LooseUser | null) {
   if (!user) return null;
   return {
     id: user.id,
@@ -16,7 +134,7 @@ function stripUser(user: any) {
   };
 }
 
-export function serializeUser(user: any) {
+export function serializeUser(user?: LooseUser | null) {
   if (!user) return null;
   const profile = user.profile;
   return {
@@ -28,18 +146,21 @@ export function serializeUser(user: any) {
   };
 }
 
-export function serializeProfile(profile: any, options: { withPosts?: boolean; viewerProfileId?: string | null; friendship?: any } = {}) {
+export function serializeProfile(
+  profile?: LooseProfile | null,
+  options: { withPosts?: boolean; viewerProfileId?: string | null; friendship?: LooseFriendship | null } = {}
+): Record<string, unknown> | null {
   if (!profile) return null;
   const followers = profile.followers ?? [];
   const following = profile.following ?? [];
-  const canSeePost = (post: any) => {
+  const canSeePost = (post: LoosePost) => {
     if (post.profileId === options.viewerProfileId) return true;
     if (post.visibility === 'private') return false;
     if (post.visibility === 'authenticated' && !options.friendship?.is_friend) return false;
     return true;
   };
   const posts = options.withPosts && Array.isArray(profile.posts)
-    ? profile.posts.filter(canSeePost).map((post: any) => serializePost(post, options.viewerProfileId))
+    ? profile.posts.filter(canSeePost).map((post) => serializePost(post, options.viewerProfileId))
     : [];
   return {
     id: profile.id,
@@ -51,12 +172,12 @@ export function serializeProfile(profile: any, options: { withPosts?: boolean; v
     total_friends: profile.totalFriends ?? 0,
     posts,
     tagged_posts: options.withPosts && Array.isArray(profile.taggedPosts)
-      ? profile.taggedPosts.map((post: any) => serializePost(post, options.viewerProfileId))
+      ? profile.taggedPosts.map((post) => serializePost(post, options.viewerProfileId))
       : [],
     post_photos: (profile.posts ?? [])
-      .flatMap((p: any) => {
+      .flatMap((p) => {
         const photos = Array.isArray(p?.images) && p.images.length ? p.images : p?.image ? [p.image] : [];
-        return photos.map((image: string) => ({ id: p.id, image }));
+        return photos.map((image) => ({ id: p.id, image }));
       }),
     user: stripUser(profile.user) ?? { id: profile.userId },
     total_followers: followers.length,
@@ -69,11 +190,11 @@ export function serializeProfile(profile: any, options: { withPosts?: boolean; v
   };
 }
 
-export function serializeComment(comment: any): any {
+export function serializeComment(comment?: LooseComment | null): Record<string, unknown> | null {
   if (!comment) return null;
   return {
     id: comment.id,
-    comment: censorText(comment.comment),
+    comment: censorText(comment.comment ?? ''),
     created_at: comment.createdAt,
     parent: comment.parentId,
     parentId: comment.parentId,
@@ -86,14 +207,14 @@ export function serializeComment(comment: any): any {
   };
 }
 
-export function serializePost(post: any, viewerProfileId?: string | null) {
+export function serializePost(post?: LoosePost | null, viewerProfileId?: string | null): Record<string, unknown> | null {
   if (!post) return null;
   const likes = post.likes ?? [];
   const comments = post.comments ?? [];
   const isLiked = Boolean(
     viewerProfileId &&
     Array.isArray(likes) &&
-    likes.some((like: any) => like.id === viewerProfileId)
+    likes.some((like) => like.id === viewerProfileId)
   );
   return {
     id: post.id,
@@ -108,7 +229,7 @@ export function serializePost(post: any, viewerProfileId?: string | null) {
     updated_at: post.updatedAt,
     visibility: post.visibility,
     post_type: post.type || 'status',
-    tagged_profiles: (post.taggedProfiles ?? []).map(serializeProfile),
+    tagged_profiles: (post.taggedProfiles ?? []).map((tagged) => serializeProfile(tagged)),
     profile: serializeProfile(post.profile),
     likes: Array.isArray(likes) ? likes.length : likes,
     is_liked: isLiked,
@@ -116,7 +237,7 @@ export function serializePost(post: any, viewerProfileId?: string | null) {
   };
 }
 
-export function serializeFriendRequest(request: any) {
+export function serializeFriendRequest(request?: LooseFriendRequest | null) {
   if (!request) return null;
   const fromProfile = request.fromUser?.profile
     ? serializeProfile({ ...request.fromUser.profile, user: request.fromUser })
@@ -133,7 +254,7 @@ export function serializeFriendRequest(request: any) {
   };
 }
 
-export function serializeConversation(conversation: any, viewerId?: string) {
+export function serializeConversation(conversation?: LooseConversation | null, viewerId?: string) {
   if (!conversation) return null;
   const requestStatus = conversation.requestStatus || 'accepted';
   const requestedBy = conversation.requestedById || null;
@@ -144,7 +265,7 @@ export function serializeConversation(conversation: any, viewerId?: string) {
     is_group: conversation.isGroup,
     participants: (conversation.participants ?? []).map(serializeUser),
     messages: (conversation.messages ?? [])
-      .filter((message: any) => !viewerId || !(message.hiddenFor ?? []).includes(viewerId))
+      .filter((message) => !viewerId || !(message.hiddenFor ?? []).includes(viewerId))
       .map(serializeMessage),
     created_at: conversation.createdAt,
     updated_at: conversation.updatedAt,
@@ -154,14 +275,14 @@ export function serializeConversation(conversation: any, viewerId?: string) {
   };
 }
 
-export function serializeMessage(message: any) {
+export function serializeMessage(message?: LooseMessage | null) {
   if (!message) return null;
   const unsent = Boolean(message.deleted);
   return {
     id: message.id,
     conversation: message.conversationId,
     sender: serializeUser(message.sender),
-    text: unsent ? '' : censorText(message.text),
+    text: unsent ? '' : censorText(message.text ?? ''),
     image: unsent ? null : message.imageUrl,
     gif_url: unsent ? null : message.gifUrl,
     created_at: message.createdAt,
@@ -169,7 +290,7 @@ export function serializeMessage(message: any) {
     deleted: unsent,
     reactions: unsent
       ? []
-      : (message.reactions ?? []).map((reaction: any) => ({
+      : (message.reactions ?? []).map((reaction) => ({
       id: reaction.id,
       user: serializeUser(reaction.user),
       message: reaction.messageId,
@@ -179,7 +300,7 @@ export function serializeMessage(message: any) {
   };
 }
 
-export function serializeNotification(notification: any) {
+export function serializeNotification(notification?: LooseNotification | null) {
   if (!notification) return null;
   return {
     id: notification.id,

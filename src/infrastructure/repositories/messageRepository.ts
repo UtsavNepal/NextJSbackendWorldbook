@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const messageRepository = {
@@ -20,7 +20,7 @@ export const messageRepository = {
   async listMessages() {
     return prisma.message.findMany();
   },
-  async updateMessage(id: string, data: any) {
+  async updateMessage(id: string, data: Prisma.MessageUncheckedUpdateInput) {
     return prisma.message.update({ where: { id }, data });
   },
   async deleteMessage(id: string) {

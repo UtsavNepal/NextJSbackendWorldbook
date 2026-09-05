@@ -1,7 +1,7 @@
 import { profileRepository } from '../infrastructure/repositories/profileRepository';
 import { Profile } from '../domain/profile';
 
-function mapProfile(prismaProfile: any): Profile | null {
+function mapProfile(prismaProfile: Profile | null): Profile | null {
   if (!prismaProfile) return null;
   return {
     id: prismaProfile.id,
@@ -46,7 +46,7 @@ export const profileService = {
     const profile = await profileRepository.getProfileByUserId(userId);
     return mapProfile(profile);
   },
-  async getPublicProfile(profileId: string): Promise<any> {
+  async getPublicProfile(profileId: string) {
     // Return public info and mutual friends, post photos, etc.
     return profileRepository.getPublicProfile(profileId);
   },
@@ -58,10 +58,10 @@ export const profileService = {
     const following = await profileRepository.getFollowing(profileId);
     return following.map(mapProfile).filter(Boolean) as Profile[];
   },
-  async followProfile(userId: string, profileId: string): Promise<any> {
+  async followProfile(userId: string, profileId: string) {
     return profileRepository.followProfile(userId, profileId);
   },
-  async unfollowProfile(userId: string, profileId: string): Promise<any> {
+  async unfollowProfile(userId: string, profileId: string) {
     return profileRepository.unfollowProfile(userId, profileId);
   },
 };

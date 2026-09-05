@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const userRepository = {
@@ -28,7 +28,7 @@ export const userRepository = {
   async listUsers() {
     return prisma.user.findMany({ select: { id: true, email: true, firstname: true, lastname: true, birthday: true, gender: true, emailActive: true, profilePicture: true, isActive: true, isStaff: true, isVerified: true, otp: true, joinedAt: true, password: true } });
   },
-  async updateUser(id: string, data: any) {
+  async updateUser(id: string, data: Prisma.UserUncheckedUpdateInput) {
     return prisma.user.update({ where: { id }, data });
   },
   async deleteUser(id: string) {

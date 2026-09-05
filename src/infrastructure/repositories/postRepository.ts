@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const postRepository = {
@@ -19,7 +19,7 @@ export const postRepository = {
   async listPosts() {
     return prisma.post.findMany();
   },
-  async updatePost(id: string, data: any) {
+  async updatePost(id: string, data: Prisma.PostUncheckedUpdateInput) {
     return prisma.post.update({ where: { id }, data });
   },
   async deletePost(id: string) {

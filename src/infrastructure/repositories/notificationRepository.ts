@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const notificationRepository = {
@@ -20,7 +20,7 @@ export const notificationRepository = {
   async listNotifications() {
     return prisma.notification.findMany();
   },
-  async updateNotification(id: string, data: any) {
+  async updateNotification(id: string, data: Prisma.NotificationUncheckedUpdateInput) {
     return prisma.notification.update({ where: { id }, data });
   },
   async deleteNotification(id: string) {

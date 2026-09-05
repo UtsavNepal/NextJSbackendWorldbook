@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const reactionRepository = {
@@ -16,7 +16,7 @@ export const reactionRepository = {
   async listReactions() {
     return prisma.reaction.findMany();
   },
-  async updateReaction(id: string, data: any) {
+  async updateReaction(id: string, data: Prisma.ReactionUncheckedUpdateInput) {
     return prisma.reaction.update({ where: { id }, data });
   },
   async deleteReaction(id: string) {

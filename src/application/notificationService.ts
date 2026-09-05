@@ -1,16 +1,26 @@
 import { notificationRepository } from '../infrastructure/repositories/notificationRepository';
-import { Notification } from '../domain/notification';
+import { Notification, NotificationType } from '../domain/notification';
 
-function mapNotification(prismaNotification: any): Notification | null {
+function mapNotification(prismaNotification: {
+  id: string;
+  recipientId: string;
+  actorId: string;
+  notificationType: string;
+  message: string;
+  relatedPostId?: string | null;
+  relatedCommentId?: string | null;
+  isRead: boolean;
+  timestamp: Date;
+} | null): Notification | null {
   if (!prismaNotification) return null;
   return {
     id: prismaNotification.id,
     recipientId: prismaNotification.recipientId,
     actorId: prismaNotification.actorId,
-    notificationType: prismaNotification.notificationType,
+    notificationType: prismaNotification.notificationType as NotificationType,
     message: prismaNotification.message,
-    relatedPostId: prismaNotification.relatedPostId,
-    relatedCommentId: prismaNotification.relatedCommentId,
+    relatedPostId: prismaNotification.relatedPostId ?? undefined,
+    relatedCommentId: prismaNotification.relatedCommentId ?? undefined,
     isRead: prismaNotification.isRead,
     timestamp: prismaNotification.timestamp,
   };

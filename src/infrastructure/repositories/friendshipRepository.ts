@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
+import { Prisma, PrismaClient } from '@/generated/prisma';
 const prisma = new PrismaClient();
 
 export const friendshipRepository = {
@@ -15,7 +15,7 @@ export const friendshipRepository = {
   async listFriendships() {
     return prisma.friendship.findMany();
   },
-  async updateFriendship(id: string, data: any) {
+  async updateFriendship(id: string, data: Prisma.FriendshipUncheckedUpdateInput) {
     return prisma.friendship.update({ where: { id }, data });
   },
   async deleteFriendship(id: string) {

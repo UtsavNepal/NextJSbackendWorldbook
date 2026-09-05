@@ -1,7 +1,7 @@
 import { commentRepository } from '../infrastructure/repositories/commentRepository';
 import { Comment } from '../domain/comment';
 
-function mapComment(prismaComment: any): Comment | null {
+function mapComment(prismaComment: Comment | null): Comment | null {
   if (!prismaComment) return null;
   return {
     id: prismaComment.id,

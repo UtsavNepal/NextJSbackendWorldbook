@@ -1,7 +1,7 @@
 import { followRepository } from '../infrastructure/repositories/followRepository';
 import { Follow } from '../domain/follow';
 
-function mapFollow(prismaFollow: any): Follow | null {
+function mapFollow(prismaFollow: Follow | null): Follow | null {
   if (!prismaFollow) return null;
   return {
     id: prismaFollow.id,

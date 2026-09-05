@@ -1,11 +1,18 @@
 import { conversationRepository } from '../infrastructure/repositories/conversationRepository';
 import { Conversation } from '../domain/conversation';
 
-function mapConversation(prismaConv: any): Conversation | null {
+function mapConversation(prismaConv: {
+  id: string;
+  name?: string | null;
+  isGroup: boolean;
+  participantIds?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+} | null): Conversation | null {
   if (!prismaConv) return null;
   return {
     id: prismaConv.id,
-    name: prismaConv.name,
+    name: prismaConv.name ?? undefined,
     isGroup: prismaConv.isGroup,
     participantIds: prismaConv.participantIds || [],
     createdAt: prismaConv.createdAt,

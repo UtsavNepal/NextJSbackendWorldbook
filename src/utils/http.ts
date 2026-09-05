@@ -13,7 +13,7 @@ export async function requireUserId(req: NextRequest): Promise<string | null> {
   return getUserIdFromRequest(req);
 }
 
-export async function readJson(req: NextRequest): Promise<any> {
+export async function readJson(req: NextRequest) {
   try {
     return await req.json();
   } catch {

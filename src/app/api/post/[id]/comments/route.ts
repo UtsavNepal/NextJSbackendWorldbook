@@ -5,9 +5,11 @@ import { serializeComment } from '@/utils/serializers';
 import { getProfileForUser, notify } from '@/utils/social';
 import { censorText } from '@/utils/censorText';
 
-function nestComments(comments: any[]) {
-  const map: Record<string, any> = {};
-  const roots: any[] = [];
+type NestedComment = NonNullable<ReturnType<typeof serializeComment>> & { replies: NestedComment[] };
+
+function nestComments(comments: Array<{ id: string; parentId?: string | null }>) {
+  const map: Record<string, NestedComment> = {};
+  const roots: NestedComment[] = [];
   comments.forEach((comment) => {
     map[comment.id] = { ...serializeComment(comment), replies: [] };
   });

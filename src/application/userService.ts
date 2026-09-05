@@ -1,7 +1,7 @@
 import { userRepository } from '../infrastructure/repositories/userRepository';
 import { User } from '../domain/user';
 
-function mapUser(prismaUser: any): User | null {
+function mapUser(prismaUser: User | null): User | null {
   if (!prismaUser) return null;
   return {
     id: prismaUser.id,
