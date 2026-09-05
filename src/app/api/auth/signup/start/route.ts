@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendMail } from '@/infrastructure/emailService';
 import { prisma } from '@/infrastructure/prisma';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }

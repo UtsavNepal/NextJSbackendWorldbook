@@ -3,6 +3,9 @@ import { prisma } from '@/infrastructure/prisma';
 import { sendMail } from '@/infrastructure/emailService';
 import { fail, ok, readJson } from '@/utils/http';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const { email } = await readJson(req);
   if (!email) return fail('Missing email');

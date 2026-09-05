@@ -3,6 +3,10 @@ import { getUserIdFromRequest } from '../../../utils/tokenUtils';
 import bcrypt from 'bcryptjs';
 import { sendMail } from '@/infrastructure/emailService';
 import { prisma } from '@/infrastructure/prisma';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const otpStore: { [email: string]: { otp: string; expires: number } } = {};
 
 export async function POST(req: NextRequest) {
