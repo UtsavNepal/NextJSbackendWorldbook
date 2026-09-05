@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { serializeUser } from '@/utils/serializers';
+import { getFriendshipStatuses } from '@/utils/social';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
@@ -23,5 +24,9 @@ export async function GET(req: NextRequest) {
     include: { profile: true },
     take: 20,
   });
-  return ok(users.map(serializeUser));
+  const statuses = await getFriendshipStatuses(userId, users.map((item) => item.id));
+  return ok(users.map((item) => ({
+    ...serializeUser(item),
+    ...(statuses[item.id] || {}),
+  })));
 }

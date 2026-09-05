@@ -4,6 +4,7 @@ import { fail, ok, requireUserId } from '@/utils/http';
 import { profileInclude, serializeProfile } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
 import { saveUploadedFile } from '@/utils/uploadFile';
+import { createProfileUpdatePost } from '@/utils/profileUpdatePost';
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
@@ -19,5 +20,6 @@ export async function POST(req: NextRequest) {
     data: { coverPhoto: url },
     include: profileInclude,
   });
+  await createProfileUpdatePost(profile.id, url, 'cover_photo');
   return ok(serializeProfile(updated, { withPosts: true }));
 }

@@ -4,6 +4,7 @@ import { fail, ok, requireUserId } from '@/utils/http';
 import { profileInclude, serializeProfile } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
 import { saveUploadedFile } from '@/utils/uploadFile';
+import { createProfileUpdatePost } from '@/utils/profileUpdatePost';
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
@@ -22,5 +23,6 @@ export async function POST(req: NextRequest) {
   await prisma.profilePictureHistory.create({
     data: { profileId: profile.id, profilePicture: url },
   });
+  await createProfileUpdatePost(profile.id, url, 'profile_picture');
   return ok(serializeProfile(updated, { withPosts: true }));
 }

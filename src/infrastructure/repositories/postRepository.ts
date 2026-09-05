@@ -9,6 +9,7 @@ export const postRepository = {
     profileId: string;
     content?: string;
     image?: string;
+    images?: string[];
     visibility?: string;
     taggedProfiles?: { connect: { id: string }[] };
     likes?: { connect: { id: string }[] };

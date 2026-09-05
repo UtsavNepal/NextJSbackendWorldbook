@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
-import { getProfileForUser, notify, resolveProfileId } from '@/utils/social';
+import { getProfileForUser, notify, resolveProfileId, withdrawNotification } from '@/utils/social';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
@@ -34,6 +34,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!actor || !profileId) return fail('Profile not found', 404);
   await prisma.follow.deleteMany({
     where: { followerId: actor.id, followingId: profileId },
+  });
+  await withdrawNotification({
+    recipientId: profileId,
+    actorId: actor.id,
+    notificationType: 'follow',
   });
   return ok({ message: 'Unfollowed successfully' });
 }

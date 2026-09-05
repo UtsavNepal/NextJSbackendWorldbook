@@ -3,13 +3,16 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { postInclude, serializePost } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
-import { saveUploadedFile } from '@/utils/uploadFile';
+import { collectImageFiles, saveUploadedFiles } from '@/utils/uploadFile';
+import { censorText } from '@/utils/censorText';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const userId = await requireUserId(req);
+  const viewer = userId ? await getProfileForUser(userId) : null;
   const post = await prisma.post.findUnique({ where: { id }, include: postInclude });
   if (!post) return fail('Post not found', 404);
-  return ok(serializePost(post));
+  return ok(serializePost(post, viewer?.id));
 }
 
 async function updatePost(req: NextRequest, id: string) {
@@ -22,20 +25,37 @@ async function updatePost(req: NextRequest, id: string) {
 
   const contentType = req.headers.get('content-type') || '';
   let data: any = {};
+  const existingImages = (existing.images?.length ? existing.images : existing.image ? [existing.image] : []) as string[];
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData();
-    data.content = String(form.get('content') || existing.content || '');
+    data.content = censorText(String(form.get('content') || existing.content || ''));
     data.visibility = String(form.get('visibility') || existing.visibility);
-    const file = form.get('image');
-    if (file instanceof File && file.size > 0) {
-      data.image = await saveUploadedFile(file, 'posts', profile.username);
+    const keepRaw = String(form.get('keep_images') || '');
+    let keep = existingImages;
+    if (keepRaw) {
+      try {
+        const parsed = JSON.parse(keepRaw);
+        if (Array.isArray(parsed)) keep = parsed.filter(Boolean);
+      } catch {
+        keep = existingImages;
+      }
     }
+    const uploaded = await saveUploadedFiles(collectImageFiles(form), 'posts', profile.username);
+    const images = [...keep, ...uploaded];
+    data.images = images;
+    data.image = images[0] || null;
   } else {
     const body = await req.json();
+    const images = Array.isArray(body.images)
+      ? body.images
+      : body.image
+        ? [body.image]
+        : existingImages;
     data = {
-      content: body.content ?? existing.content,
+      content: censorText(body.content ?? existing.content),
       visibility: body.visibility ?? existing.visibility,
-      image: body.image ?? existing.image,
+      images,
+      image: images[0] || null,
     };
   }
 
@@ -44,7 +64,7 @@ async function updatePost(req: NextRequest, id: string) {
     data,
     include: postInclude,
   });
-  return ok(serializePost(updated));
+  return ok(serializePost(updated, profile.id));
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

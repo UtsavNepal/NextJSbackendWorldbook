@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { profileInclude, serializeProfile } from '@/utils/serializers';
-import { getProfileForUser } from '@/utils/social';
+import { getProfileForUser, getViewerProfileId } from '@/utils/social';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
       include: profileInclude,
     });
     if (!profile) return fail('Profile not found', 404);
-    return ok(serializeProfile(profile, { withPosts: true }));
+    const viewerProfileId = await getViewerProfileId(await requireUserId(req));
+    return ok(serializeProfile(profile, { withPosts: true, viewerProfileId }));
   }
   const userId = await requireUserId(req);
   if (!userId) return fail('Unauthorized', 401);

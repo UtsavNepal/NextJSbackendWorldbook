@@ -3,6 +3,7 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { serializeComment } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
+import { censorText } from '@/utils/censorText';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
@@ -15,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await readJson(req);
   const updated = await prisma.comment.update({
     where: { id },
-    data: { comment: body.comment },
+    data: { comment: censorText(body.comment) },
     include: { profile: { include: { user: true } } },
   });
   return ok(serializeComment(updated));

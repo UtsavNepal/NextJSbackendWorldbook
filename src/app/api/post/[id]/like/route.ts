@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { postInclude, serializePost } from '@/utils/serializers';
-import { getProfileForUser, notify } from '@/utils/social';
+import { getProfileForUser, notify, withdrawNotification } from '@/utils/social';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
@@ -25,7 +25,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: postInclude,
   });
 
-  if (!alreadyLiked) {
+  if (alreadyLiked) {
+    await withdrawNotification({
+      recipientId: existing.profileId,
+      actorId: profile.id,
+      notificationType: 'like',
+      relatedPostId: id,
+    });
+  } else {
     await notify({
       recipientId: existing.profileId,
       actorId: profile.id,
@@ -34,5 +41,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       relatedPostId: id,
     });
   }
-  return ok(serializePost(updated));
+  return ok(serializePost(updated, profile.id));
 }

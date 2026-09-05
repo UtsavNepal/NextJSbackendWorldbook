@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
-import { getProfileForUser, notify } from '@/utils/social';
+import { getProfileForUser, notify, withdrawFriendRequestNotification } from '@/utils/social';
+import { acceptPendingBetween } from '@/utils/conversationRequest';
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
@@ -21,6 +22,8 @@ export async function POST(req: NextRequest) {
     where: { userId: { in: [request.fromUserId, request.toUserId] } },
     data: { totalFriends: { increment: 1 } },
   });
+  await withdrawFriendRequestNotification(request.fromUserId, request.toUserId);
+  await acceptPendingBetween(request.fromUserId, request.toUserId);
   const actor = await getProfileForUser(userId);
   const recipient = await getProfileForUser(request.fromUserId);
   if (actor && recipient) {

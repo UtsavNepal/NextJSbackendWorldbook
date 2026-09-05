@@ -34,5 +34,5 @@ export async function GET(req: NextRequest) {
     include: postInclude,
     orderBy: { createdAt: 'desc' },
   });
-  return ok(posts.map(serializePost));
+  return ok(posts.map((post) => serializePost(post, profile.id)));
 }

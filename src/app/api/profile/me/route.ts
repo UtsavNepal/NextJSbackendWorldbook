@@ -11,5 +11,5 @@ export async function GET(req: NextRequest) {
     include: profileInclude,
   });
   if (!profile) return fail('Profile not found', 404);
-  return ok(serializeProfile(profile, { withPosts: true }));
+  return ok(serializeProfile(profile, { withPosts: true, viewerProfileId: profile.id }));
 }

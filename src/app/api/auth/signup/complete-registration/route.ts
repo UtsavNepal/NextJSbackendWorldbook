@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
   if (!email || !password) {
     return fail('Missing email or password.');
   }
+  if (String(password).length < 6) {
+    return fail('Password must be at least 6 characters long.');
+  }
   const record = await prisma.signupOtp.findUnique({ where: { email } });
   if (!record || !record.verified) {
     return fail('OTP not verified.');
@@ -25,10 +28,10 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.create({
     data: {
       email: record.email,
-      firstname: body.firstname || record.firstname,
-      lastname: body.lastname || record.lastname,
-      birthday: body.birthday ? new Date(body.birthday) : record.birthday,
-      gender: body.gender || record.gender,
+      firstname: record.firstname,
+      lastname: record.lastname,
+      birthday: record.birthday,
+      gender: record.gender,
       password: hashedPassword,
       emailActive: true,
       isActive: true,

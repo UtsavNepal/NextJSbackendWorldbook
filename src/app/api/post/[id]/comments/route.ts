@@ -3,6 +3,7 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { serializeComment } from '@/utils/serializers';
 import { getProfileForUser, notify } from '@/utils/social';
+import { censorText } from '@/utils/censorText';
 
 function nestComments(comments: any[]) {
   const map: Record<string, any> = {};
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       profileId: profile.id,
       postId: id,
-      comment: body.comment,
+      comment: censorText(body.comment),
       parentId: body.parent || body.parentId || null,
     },
     include: { profile: { include: { user: true } } },

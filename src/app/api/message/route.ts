@@ -3,6 +3,8 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { serializeMessage } from '@/utils/serializers';
 import { saveUploadedFile } from '@/utils/uploadFile';
+import { censorText } from '@/utils/censorText';
+import { areFriends, notifyMessageRequest } from '@/utils/conversationRequest';
 
 const messageInclude = {
   sender: { include: { profile: true } },
@@ -24,7 +26,8 @@ export async function GET(req: NextRequest) {
     include: messageInclude,
     orderBy: { createdAt: 'asc' },
   });
-  return ok(messages.map(serializeMessage));
+  const visible = messages.filter((message) => !((message as { hiddenFor?: string[] }).hiddenFor ?? []).includes(userId));
+  return ok(visible.map(serializeMessage));
 }
 
 export async function POST(req: NextRequest) {
@@ -56,14 +59,31 @@ export async function POST(req: NextRequest) {
   if (!conversationId) return fail('Missing conversationId');
   const conversation = await prisma.conversation.findFirst({
     where: { id: conversationId, participants: { some: { id: userId } } },
+    include: { participants: true },
   });
   if (!conversation) return fail('Conversation not found', 404);
+
+  const otherId = conversation.participants.find((participant) => participant.id !== userId)?.id;
+  const status = conversation.requestStatus || 'accepted';
+  if (otherId && await areFriends(userId, otherId) && status === 'pending') {
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { requestStatus: 'accepted' },
+    });
+  } else if (status === 'pending' && conversation.requestedById && conversation.requestedById !== userId) {
+    return fail('Accept this message request to reply', 403);
+  } else if (status === 'declined' && conversation.requestedById && conversation.requestedById !== userId) {
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { requestStatus: 'accepted' },
+    });
+  }
 
   const message = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
-      text,
+      text: text ? censorText(text) : text,
       gifUrl,
       imageUrl,
     },
@@ -73,5 +93,8 @@ export async function POST(req: NextRequest) {
     where: { id: conversationId },
     data: { updatedAt: new Date() },
   });
+  if (status === 'pending' && conversation.requestedById === userId && otherId) {
+    await notifyMessageRequest(userId, otherId);
+  }
   return ok(serializeMessage(message), 201);
 }

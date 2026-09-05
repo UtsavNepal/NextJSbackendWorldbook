@@ -1,3 +1,5 @@
+import { censorText } from './censorText';
+
 function stripUser(user: any) {
   if (!user) return null;
   return {
@@ -26,12 +28,18 @@ export function serializeUser(user: any) {
   };
 }
 
-export function serializeProfile(profile: any, options: { withPosts?: boolean } = {}) {
+export function serializeProfile(profile: any, options: { withPosts?: boolean; viewerProfileId?: string | null; friendship?: any } = {}) {
   if (!profile) return null;
   const followers = profile.followers ?? [];
   const following = profile.following ?? [];
+  const canSeePost = (post: any) => {
+    if (post.profileId === options.viewerProfileId) return true;
+    if (post.visibility === 'private') return false;
+    if (post.visibility === 'authenticated' && !options.friendship?.is_friend) return false;
+    return true;
+  };
   const posts = options.withPosts && Array.isArray(profile.posts)
-    ? profile.posts.map((post: any) => serializePost(post))
+    ? profile.posts.filter(canSeePost).map((post: any) => serializePost(post, options.viewerProfileId))
     : [];
   return {
     id: profile.id,
@@ -43,15 +51,21 @@ export function serializeProfile(profile: any, options: { withPosts?: boolean } 
     total_friends: profile.totalFriends ?? 0,
     posts,
     tagged_posts: options.withPosts && Array.isArray(profile.taggedPosts)
-      ? profile.taggedPosts.map((post: any) => serializePost(post))
+      ? profile.taggedPosts.map((post: any) => serializePost(post, options.viewerProfileId))
       : [],
     post_photos: (profile.posts ?? [])
-      .filter((p: any) => p?.image)
-      .map((p: any) => ({ id: p.id, image: p.image })),
+      .flatMap((p: any) => {
+        const photos = Array.isArray(p?.images) && p.images.length ? p.images : p?.image ? [p.image] : [];
+        return photos.map((image: string) => ({ id: p.id, image }));
+      }),
     user: stripUser(profile.user) ?? { id: profile.userId },
     total_followers: followers.length,
     total_following: following.length,
     friends: profile.friends ?? [],
+    is_friend: Boolean(options.friendship?.is_friend),
+    friend_request_sent: Boolean(options.friendship?.friend_request_sent),
+    friend_request_received: Boolean(options.friendship?.friend_request_received),
+    friend_request_id: options.friendship?.friend_request_id ?? null,
   };
 }
 
@@ -59,7 +73,7 @@ export function serializeComment(comment: any): any {
   if (!comment) return null;
   return {
     id: comment.id,
-    comment: comment.comment,
+    comment: censorText(comment.comment),
     created_at: comment.createdAt,
     parent: comment.parentId,
     parentId: comment.parentId,
@@ -72,20 +86,32 @@ export function serializeComment(comment: any): any {
   };
 }
 
-export function serializePost(post: any) {
+export function serializePost(post: any, viewerProfileId?: string | null) {
   if (!post) return null;
   const likes = post.likes ?? [];
   const comments = post.comments ?? [];
+  const isLiked = Boolean(
+    viewerProfileId &&
+    Array.isArray(likes) &&
+    likes.some((like: any) => like.id === viewerProfileId)
+  );
   return {
     id: post.id,
-    content: post.content ?? '',
-    image: post.image,
+    content: censorText(post.content ?? ''),
+    image: (Array.isArray(post.images) && post.images[0]) || post.image || null,
+    images: Array.isArray(post.images) && post.images.length
+      ? post.images
+      : post.image
+        ? [post.image]
+        : [],
     created_at: post.createdAt,
     updated_at: post.updatedAt,
     visibility: post.visibility,
+    post_type: post.type || 'status',
     tagged_profiles: (post.taggedProfiles ?? []).map(serializeProfile),
     profile: serializeProfile(post.profile),
     likes: Array.isArray(likes) ? likes.length : likes,
+    is_liked: isLiked,
     comments: comments.map(serializeComment),
   };
 }
@@ -107,32 +133,43 @@ export function serializeFriendRequest(request: any) {
   };
 }
 
-export function serializeConversation(conversation: any) {
+export function serializeConversation(conversation: any, viewerId?: string) {
   if (!conversation) return null;
+  const requestStatus = conversation.requestStatus || 'accepted';
+  const requestedBy = conversation.requestedById || null;
+  const incomingRequest = requestStatus === 'pending' && Boolean(requestedBy) && requestedBy !== viewerId;
   return {
     id: conversation.id,
     name: conversation.name,
     is_group: conversation.isGroup,
     participants: (conversation.participants ?? []).map(serializeUser),
-    messages: (conversation.messages ?? []).map(serializeMessage),
+    messages: (conversation.messages ?? [])
+      .filter((message: any) => !viewerId || !(message.hiddenFor ?? []).includes(viewerId))
+      .map(serializeMessage),
     created_at: conversation.createdAt,
     updated_at: conversation.updatedAt,
+    request_status: requestStatus,
+    requested_by: requestedBy,
+    is_message_request: incomingRequest,
   };
 }
 
 export function serializeMessage(message: any) {
   if (!message) return null;
+  const unsent = Boolean(message.deleted);
   return {
     id: message.id,
     conversation: message.conversationId,
     sender: serializeUser(message.sender),
-    text: message.text,
-    image: message.imageUrl,
-    gif_url: message.gifUrl,
+    text: unsent ? '' : censorText(message.text),
+    image: unsent ? null : message.imageUrl,
+    gif_url: unsent ? null : message.gifUrl,
     created_at: message.createdAt,
     updated_at: message.updatedAt,
-    deleted: message.deleted,
-    reactions: (message.reactions ?? []).map((reaction: any) => ({
+    deleted: unsent,
+    reactions: unsent
+      ? []
+      : (message.reactions ?? []).map((reaction: any) => ({
       id: reaction.id,
       user: serializeUser(reaction.user),
       message: reaction.messageId,

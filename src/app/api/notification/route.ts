@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { notificationInclude, serializeNotification } from '@/utils/serializers';
-import { getProfileForUser } from '@/utils/social';
+import { getProfileForUser, pruneNotifications } from '@/utils/social';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
   if (!userId) return fail('Unauthorized', 401);
   const profile = await getProfileForUser(userId);
   if (!profile) return ok([]);
+  await pruneNotifications(profile.id);
   const notifications = await prisma.notification.findMany({
     where: { recipientId: profile.id },
     include: notificationInclude,

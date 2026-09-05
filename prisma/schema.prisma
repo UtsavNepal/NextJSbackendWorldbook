@@ -74,10 +74,12 @@ model Post {
   profileId      String
   content        String?
   image          String?
+  images         String[] @default([])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   taggedProfiles Profile[] @relation("TaggedPosts")
   visibility     String   @default("public")
+  type           String   @default("status")
   likes          Profile[] @relation("LikedPosts")
   comments       Comment[]
   notifications  Notification[] @relation("RelatedPostNotifications")
@@ -150,6 +152,8 @@ model Conversation {
   name           String?
   isGroup        Boolean  @default(false)
   participants   User[]   @relation("Participants")
+  requestStatus  String   @default("accepted")
+  requestedById  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   messages       Message[]
@@ -167,6 +171,7 @@ model Message {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   deleted        Boolean  @default(false)
+  hiddenFor      String[] @default([])
   reactions      Reaction[]
 }
 
