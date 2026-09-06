@@ -109,6 +109,7 @@ export const ERRORS = {
 
   upload: {
     noFile: 'Please choose a photo to upload.',
+    storageNotConfigured: 'Photo uploads are not available right now. Please try again later.',
   },
 
   email: {
