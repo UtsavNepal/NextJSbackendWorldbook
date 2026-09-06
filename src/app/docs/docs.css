@@ -1,0 +1,10 @@
+html,
+body {
+  background: #fafafa !important;
+  color: #3b4151 !important;
+  color-scheme: light;
+}
+
+#swagger-ui {
+  min-height: 100vh;
+}
