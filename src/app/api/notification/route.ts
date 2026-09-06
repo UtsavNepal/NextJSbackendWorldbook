@@ -3,10 +3,11 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { notificationInclude, serializeNotification } from '@/utils/serializers';
 import { getProfileForUser, pruneNotifications } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
   if (!profile) return ok([]);
   await pruneNotifications(profile.id);
@@ -20,9 +21,9 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
   const body = await readJson(req);
   if (body.all_read || body.allRead) {
     await prisma.notification.updateMany({

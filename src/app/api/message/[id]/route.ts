@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { serializeMessage } from '@/utils/serializers';
+import { ERRORS } from '@/constants/errors';
 
 const messageInclude = {
   sender: { include: { profile: true } },
@@ -17,15 +18,15 @@ async function getParticipantMessage(id: string, userId: string) {
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const body = await readJson(req);
   const action = String(body.action || '');
   const existing = await getParticipantMessage(id, userId);
-  if (!existing) return fail('Message not found', 404);
+  if (!existing) return fail(ERRORS.chat.messageNotFound, 404);
 
   if (action === 'unsend') {
-    if (existing.senderId !== userId) return fail('Only the sender can unsend this message', 403);
+    if (existing.senderId !== userId) return fail(ERRORS.chat.onlySenderCanUnsend, 403);
     const updated = await prisma.message.update({
       where: { id },
       data: { deleted: true, text: null, imageUrl: null, gifUrl: null },
@@ -43,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return ok({ id, hidden: true });
   }
 
-  return fail('Invalid action');
+  return fail(ERRORS.chat.invalidAction);
 }
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {

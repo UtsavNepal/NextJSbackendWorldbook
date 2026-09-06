@@ -4,15 +4,16 @@ import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { serializeComment } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
 import { censorText } from '@/utils/censorText';
+import { ERRORS } from '@/constants/errors';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const profile = await getProfileForUser(userId);
   const existing = await prisma.comment.findUnique({ where: { id } });
-  if (!profile || !existing) return fail('Comment not found', 404);
-  if (existing.profileId !== profile.id) return fail('Forbidden', 403);
+  if (!profile || !existing) return fail(ERRORS.comment.notFound, 404);
+  if (existing.profileId !== profile.id) return fail(ERRORS.FORBIDDEN, 403);
   const body = await readJson(req);
   const updated = await prisma.comment.update({
     where: { id },
@@ -28,12 +29,12 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const profile = await getProfileForUser(userId);
   const existing = await prisma.comment.findUnique({ where: { id } });
-  if (!profile || !existing) return fail('Comment not found', 404);
-  if (existing.profileId !== profile.id) return fail('Forbidden', 403);
+  if (!profile || !existing) return fail(ERRORS.comment.notFound, 404);
+  if (existing.profileId !== profile.id) return fail(ERRORS.FORBIDDEN, 403);
   await prisma.comment.delete({ where: { id } });
   return ok({ success: true });
 }

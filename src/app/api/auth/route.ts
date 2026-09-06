@@ -3,6 +3,7 @@ import { getUserIdFromRequest } from '../../../utils/tokenUtils';
 import bcrypt from 'bcryptjs';
 import { sendMail } from '@/infrastructure/emailService';
 import { prisma } from '@/infrastructure/prisma';
+import { ERRORS } from '@/constants/errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,9 +14,9 @@ export async function POST(req: NextRequest) {
   const { pathname } = new URL(req.url);
   if (pathname.endsWith('/auth/request-password-reset')) {
     const { email } = await req.json();
-    if (!email) return NextResponse.json({ error: 'Missing email' }, { status: 400 });
+    if (!email) return NextResponse.json({ error: ERRORS.validation.missingEmail }, { status: 400 });
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user) return NextResponse.json({ error: ERRORS.user.notFound }, { status: 404 });
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000 };
@@ -29,19 +30,19 @@ export async function POST(req: NextRequest) {
   }
   if (pathname.endsWith('/auth/verify-reset-otp')) {
     const { email, otp } = await req.json();
-    if (!email || !otp) return NextResponse.json({ error: 'Missing email or otp' }, { status: 400 });
+    if (!email || !otp) return NextResponse.json({ error: ERRORS.validation.missingEmailOrOtp }, { status: 400 });
     const record = otpStore[email];
     if (!record || record.otp !== otp || record.expires < Date.now()) {
-      return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 });
+      return NextResponse.json({ error: ERRORS.password.invalidOrExpiredOtp }, { status: 400 });
     }
     return NextResponse.json({ message: 'OTP verified' });
   }
   if (pathname.endsWith('/auth/reset-password')) {
     const { email, otp, newPassword } = await req.json();
-    if (!email || !otp || !newPassword) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!email || !otp || !newPassword) return NextResponse.json({ error: ERRORS.MISSING_FIELDS }, { status: 400 });
     const record = otpStore[email];
     if (!record || record.otp !== otp || record.expires < Date.now()) {
-      return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 });
+      return NextResponse.json({ error: ERRORS.password.invalidOrExpiredOtp }, { status: 400 });
     }
     const hashed = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({ where: { email }, data: { password: hashed } });
@@ -51,11 +52,11 @@ export async function POST(req: NextRequest) {
   if (pathname.endsWith('/auth/change-password')) {
     const { oldPassword, newPassword } = await req.json();
     const userId = await getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) return NextResponse.json({ error: ERRORS.UNAUTHORIZED }, { status: 401 });
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user) return NextResponse.json({ error: ERRORS.user.notFound }, { status: 404 });
     const valid = await bcrypt.compare(oldPassword, user.password);
-    if (!valid) return NextResponse.json({ error: 'Invalid old password' }, { status: 400 });
+    if (!valid) return NextResponse.json({ error: ERRORS.password.invalidOldPassword }, { status: 400 });
     const hashed = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
     return NextResponse.json({ message: 'Password changed successfully' });

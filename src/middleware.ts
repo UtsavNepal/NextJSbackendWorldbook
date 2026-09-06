@@ -15,9 +15,24 @@ function corsHeaders(origin: string) {
   };
 }
 
+function isVercelPreviewOf(allowed: string, origin: string) {
+  try {
+    const allowedHost = new URL(allowed).hostname;
+    const originHost = new URL(origin).hostname;
+    if (!allowedHost.endsWith('.vercel.app') || !originHost.endsWith('.vercel.app')) {
+      return false;
+    }
+    const project = allowedHost.replace(/\.vercel\.app$/, '');
+    return originHost === allowedHost || originHost.startsWith(`${project}-`);
+  } catch {
+    return false;
+  }
+}
+
 function resolveOrigin(request: NextRequest) {
   const origin = request.headers.get('origin') || '';
   if (allowedOrigins.includes(origin)) return origin;
+  if (allowedOrigins.some((allowed) => isVercelPreviewOf(allowed, origin))) return origin;
   return allowedOrigins[0] || 'http://localhost:5173';
 }
 

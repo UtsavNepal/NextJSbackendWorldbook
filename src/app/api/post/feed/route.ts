@@ -3,10 +3,11 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { postInclude, serializePost } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
   if (!profile) return ok([]);
 

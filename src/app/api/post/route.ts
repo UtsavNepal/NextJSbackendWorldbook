@@ -5,16 +5,17 @@ import { postInclude, serializePost } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
 import { collectImageFiles, saveUploadedFiles } from '@/utils/uploadFile';
 import { censorText } from '@/utils/censorText';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (id) {
     const post = await prisma.post.findUnique({ where: { id }, include: postInclude });
-    if (!post) return fail('Post not found', 404);
+    if (!post) return fail(ERRORS.post.notFound, 404);
     return ok(serializePost(post, profile?.id));
   }
   const posts = await prisma.post.findMany({
@@ -26,9 +27,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
 
   const contentType = req.headers.get('content-type') || '';
   let content = '';

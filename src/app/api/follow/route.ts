@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { followService } from '../../../application/followService';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (id) {
     const follow = await followService.getFollowById(id);
-    if (!follow) return NextResponse.json({ error: 'Follow not found' }, { status: 404 });
+    if (!follow) return NextResponse.json({ error: ERRORS.follow.notFound }, { status: 404 });
     return NextResponse.json(follow);
   }
   // List all follows if no id is provided
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   if (!body.followerId || !body.followingId) {
-    return NextResponse.json({ error: 'Missing followerId or followingId' }, { status: 400 });
+    return NextResponse.json({ error: ERRORS.validation.missingFollowIds }, { status: 400 });
   }
   try {
     const follow = await followService.createFollow({
@@ -27,31 +28,31 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(follow, { status: 201 });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create follow' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.follow.createFailed }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: ERRORS.MISSING_ID }, { status: 400 });
   const body = await req.json();
   try {
     const updated = await followService.updateFollow(id, body);
     return NextResponse.json(updated);
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update follow' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.follow.updateFailed }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: ERRORS.MISSING_ID }, { status: 400 });
   try {
     await followService.deleteFollow(id);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete follow' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.follow.deleteFailed }, { status: 500 });
   }
 } 

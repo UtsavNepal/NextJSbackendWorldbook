@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { commentService } from '../../../application/commentService';
 import { Comment } from '../../../domain/comment';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (id) {
     const comment = await commentService.getCommentById(id);
-    if (!comment) return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+    if (!comment) return NextResponse.json({ error: ERRORS.comment.notFound }, { status: 404 });
     return NextResponse.json(comment);
   }
   const { pathname } = new URL(req.url);
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   if (!body.profileId || !body.postId || !body.comment) {
-    return NextResponse.json({ error: 'Missing profileId, postId, or comment' }, { status: 400 });
+    return NextResponse.json({ error: ERRORS.validation.missingCommentFields }, { status: 400 });
   }
   try {
     const comment = await commentService.createComment({
@@ -48,31 +49,31 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(comment, { status: 201 });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create comment' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.comment.createFailed }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: ERRORS.MISSING_ID }, { status: 400 });
   const body = await req.json();
   try {
     const updated = await commentService.updateComment(id, body);
     return NextResponse.json(updated);
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update comment' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.comment.updateFailed }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: ERRORS.MISSING_ID }, { status: 400 });
   try {
     await commentService.deleteComment(id);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete comment' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.comment.deleteFailed }, { status: 500 });
   }
 } 

@@ -3,10 +3,11 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { serializeUser } from '@/utils/serializers';
 import { getFriendshipStatuses } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const query = new URL(req.url).searchParams.get('query')
     || new URL(req.url).searchParams.get('q')
     || '';

@@ -5,23 +5,24 @@ import { postInclude, serializePost } from '@/utils/serializers';
 import { getProfileForUser } from '@/utils/social';
 import { collectImageFiles, saveUploadedFiles } from '@/utils/uploadFile';
 import { censorText } from '@/utils/censorText';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const userId = await requireUserId(req);
   const viewer = userId ? await getProfileForUser(userId) : null;
   const post = await prisma.post.findUnique({ where: { id }, include: postInclude });
-  if (!post) return fail('Post not found', 404);
+  if (!post) return fail(ERRORS.post.notFound, 404);
   return ok(serializePost(post, viewer?.id));
 }
 
 async function updatePost(req: NextRequest, id: string) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
   const existing = await prisma.post.findUnique({ where: { id } });
-  if (!profile || !existing) return fail('Post not found', 404);
-  if (existing.profileId !== profile.id) return fail('Forbidden', 403);
+  if (!profile || !existing) return fail(ERRORS.post.notFound, 404);
+  if (existing.profileId !== profile.id) return fail(ERRORS.FORBIDDEN, 403);
 
   const contentType = req.headers.get('content-type') || '';
   let data: {
@@ -84,12 +85,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const profile = await getProfileForUser(userId);
   const existing = await prisma.post.findUnique({ where: { id } });
-  if (!profile || !existing) return fail('Post not found', 404);
-  if (existing.profileId !== profile.id) return fail('Forbidden', 403);
+  if (!profile || !existing) return fail(ERRORS.post.notFound, 404);
+  if (existing.profileId !== profile.id) return fail(ERRORS.FORBIDDEN, 403);
   await prisma.post.delete({ where: { id } });
   await prisma.profile.update({
     where: { id: profile.id },

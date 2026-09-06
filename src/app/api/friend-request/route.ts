@@ -3,10 +3,11 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { friendRequestInclude, serializeFriendRequest } from '@/utils/serializers';
 import { getProfileForUser, notify, resolveProfileId } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const requests = await prisma.friendRequest.findMany({
     where: { toUserId: userId, status: 'pending' },
     include: friendRequestInclude,
@@ -17,10 +18,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const body = await readJson(req);
   const rawTarget = body.to_user_id || body.toUserId || body.userId;
-  if (!rawTarget) return fail('Missing to_user_id');
+  if (!rawTarget) return fail(ERRORS.validation.missingTargetUser);
 
   let toUserId = String(rawTarget);
   const profileId = await resolveProfileId(toUserId);
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     if (targetProfile) toUserId = targetProfile.userId;
   }
 
-  if (toUserId === userId) return fail('Cannot friend yourself');
+  if (toUserId === userId) return fail(ERRORS.friend.cannotFriendSelf);
   const existing = await prisma.friendRequest.findFirst({
     where: {
       OR: [
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       ],
     },
   });
-  if (existing) return fail('Friend request already sent.');
+  if (existing) return fail(ERRORS.friend.alreadySent);
 
   const request = await prisma.friendRequest.create({
     data: { fromUserId: userId, toUserId, status: 'pending' },

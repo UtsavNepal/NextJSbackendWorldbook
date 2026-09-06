@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/infrastructure/prisma';
+import { ERRORS } from '@/constants/errors';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { email } = body;
   if (!email) {
-    return NextResponse.json({ error: 'Missing email.' }, { status: 400 });
+    return NextResponse.json({ error: ERRORS.signup.missingEmail }, { status: 400 });
   }
   const record = await prisma.signupOtp.findUnique({ where: { email } });
   if (!record || !record.verified) {
-    return NextResponse.json({ error: 'OTP not verified.' }, { status: 400 });
+    return NextResponse.json({ error: ERRORS.signup.otpNotVerified }, { status: 400 });
   }
   // Create user
   const hashedPassword = await bcrypt.hash(record.otp, 10);

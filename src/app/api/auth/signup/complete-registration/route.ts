@@ -4,24 +4,25 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson } from '@/utils/http';
 import { serializeUser } from '@/utils/serializers';
 import { uniqueUsername } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function POST(req: NextRequest) {
   const body = await readJson(req);
   const { email, password } = body;
   if (!email || !password) {
-    return fail('Missing email or password.');
+    return fail(ERRORS.signup.missingEmailOrPassword);
   }
   if (String(password).length < 6) {
-    return fail('Password must be at least 6 characters long.');
+    return fail(ERRORS.signup.passwordTooShort);
   }
   const record = await prisma.signupOtp.findUnique({ where: { email } });
   if (!record || !record.verified) {
-    return fail('OTP not verified.');
+    return fail(ERRORS.signup.otpNotVerified);
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return fail('User already exists.');
+    return fail(ERRORS.signup.userExists);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);

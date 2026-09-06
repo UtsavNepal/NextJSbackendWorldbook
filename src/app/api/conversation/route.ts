@@ -3,6 +3,7 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { conversationInclude, serializeConversation } from '@/utils/serializers';
 import { requestFieldsForNewConversation } from '@/utils/conversationRequest';
+import { ERRORS } from '@/constants/errors';
 
 function isVisibleToViewer(
   conversation: { requestStatus?: string | null; requestedById?: string | null },
@@ -15,7 +16,7 @@ function isVisibleToViewer(
 
 export async function GET(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const conversations = await prisma.conversation.findMany({
     where: { participants: { some: { id: userId } } },
     include: conversationInclude,
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const body = await readJson(req);
   const extraParticipants = Array.isArray(body.participants)
     ? body.participants

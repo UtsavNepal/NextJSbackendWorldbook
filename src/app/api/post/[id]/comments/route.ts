@@ -4,6 +4,7 @@ import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { serializeComment } from '@/utils/serializers';
 import { getProfileForUser, notify } from '@/utils/social';
 import { censorText } from '@/utils/censorText';
+import { ERRORS } from '@/constants/errors';
 
 type NestedComment = NonNullable<ReturnType<typeof serializeComment>> & { replies: NestedComment[] };
 
@@ -35,14 +36,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const profile = await getProfileForUser(userId);
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
   const body = await readJson(req);
-  if (!body.comment) return fail('Missing comment');
+  if (!body.comment) return fail(ERRORS.validation.missingComment);
   const post = await prisma.post.findUnique({ where: { id } });
-  if (!post) return fail('Post not found', 404);
+  if (!post) return fail(ERRORS.post.notFound, 404);
   const comment = await prisma.comment.create({
     data: {
       profileId: profile.id,

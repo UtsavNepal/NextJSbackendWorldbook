@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/infrastructure/prisma';
+import { ERRORS } from '@/constants/errors';
 
 export const profileRepository = {
   async getProfileById(id: string) {
@@ -41,14 +42,14 @@ export const profileRepository = {
   },
   async followProfile(userId: string, profileId: string) {
     const profile = await prisma.profile.findUnique({ where: { userId } });
-    if (!profile) return { error: 'Profile not found' };
-    if (profile.id === profileId) return { error: 'Cannot follow yourself' };
+    if (!profile) return { error: ERRORS.profile.notFound };
+    if (profile.id === profileId) return { error: ERRORS.profile.cannotFollowSelf };
     await prisma.follow.create({ data: { followerId: profile.id, followingId: profileId } });
     return { message: 'Followed successfully' };
   },
   async unfollowProfile(userId: string, profileId: string) {
     const profile = await prisma.profile.findUnique({ where: { userId } });
-    if (!profile) return { error: 'Profile not found' };
+    if (!profile) return { error: ERRORS.profile.notFound };
     await prisma.follow.deleteMany({ where: { followerId: profile.id, followingId: profileId } });
     return { message: 'Unfollowed successfully' };
   },

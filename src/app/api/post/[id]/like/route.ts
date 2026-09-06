@@ -3,18 +3,19 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, requireUserId } from '@/utils/http';
 import { postInclude, serializePost } from '@/utils/serializers';
 import { getProfileForUser, notify, withdrawNotification } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const { id } = await params;
   const profile = await getProfileForUser(userId);
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
   const existing = await prisma.post.findUnique({
     where: { id },
     include: { likes: true },
   });
-  if (!existing) return fail('Post not found', 404);
+  if (!existing) return fail(ERRORS.post.notFound, 404);
 
   const alreadyLiked = existing.likes.some((like) => like.id === profile.id);
   const updated = await prisma.post.update({

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userService } from '../../../../application/userService';
 import bcrypt from 'bcryptjs';
+import { ERRORS } from '@/constants/errors';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   if (!body.email || !body.password) {
-    return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
+    return NextResponse.json({ error: ERRORS.login.missingEmailOrPassword }, { status: 400 });
   }
   try {
     const hashedPassword = await bcrypt.hash(body.password, 10);
@@ -26,6 +27,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(user, { status: 201 });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to signup' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : ERRORS.signup.failed }, { status: 500 });
   }
 } 

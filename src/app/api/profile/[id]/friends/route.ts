@@ -3,13 +3,14 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok } from '@/utils/http';
 import { serializeProfile } from '@/utils/serializers';
 import { resolveProfileId } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const profileId = await resolveProfileId(id);
-  if (!profileId) return fail('Profile not found', 404);
+  if (!profileId) return fail(ERRORS.profile.notFound, 404);
   const profile = await prisma.profile.findUnique({ where: { id: profileId } });
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
   const friendships = await prisma.friendship.findMany({
     where: { OR: [{ user1Id: profile.userId }, { user2Id: profile.userId }] },
   });

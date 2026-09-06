@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { resolveProfileId } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const body = await readJson(req);
   let friendId = String(body.friend_id || body.friendId || '');
-  if (!friendId) return fail('Missing friend_id');
+  if (!friendId) return fail(ERRORS.validation.missingFriendId);
   const profileId = await resolveProfileId(friendId);
   if (profileId) {
     const profile = await prisma.profile.findUnique({ where: { id: profileId } });

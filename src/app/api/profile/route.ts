@@ -3,6 +3,7 @@ import { prisma } from '@/infrastructure/prisma';
 import { fail, ok, readJson, requireUserId } from '@/utils/http';
 import { profileInclude, serializeProfile } from '@/utils/serializers';
 import { getProfileForUser, getViewerProfileId } from '@/utils/social';
+import { ERRORS } from '@/constants/errors';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,12 +13,12 @@ export async function GET(req: NextRequest) {
       where: { OR: [{ id }, { userId: id }] },
       include: profileInclude,
     });
-    if (!profile) return fail('Profile not found', 404);
+    if (!profile) return fail(ERRORS.profile.notFound, 404);
     const viewerProfileId = await getViewerProfileId(await requireUserId(req));
     return ok(serializeProfile(profile, { withPosts: true, viewerProfileId }));
   }
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profiles = await prisma.profile.findMany({
     where: { userId: { not: userId } },
     include: { user: true, followers: true, following: true },
@@ -27,11 +28,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const body = await readJson(req);
   const existing = await getProfileForUser(userId);
   if (existing) return ok(serializeProfile(existing));
-  if (!body.username) return fail('Missing username');
+  if (!body.username) return fail(ERRORS.validation.missingUsername);
   const profile = await prisma.profile.create({
     data: {
       userId,
@@ -46,9 +47,9 @@ export async function POST(req: NextRequest) {
 
 async function updateCurrentProfile(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await getProfileForUser(userId);
-  if (!profile) return fail('Profile not found', 404);
+  if (!profile) return fail(ERRORS.profile.notFound, 404);
   const body = await readJson(req);
   const updated = await prisma.profile.update({
     where: { id: profile.id },
@@ -76,7 +77,7 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const userId = await requireUserId(req);
-  if (!userId) return fail('Unauthorized', 401);
+  if (!userId) return fail(ERRORS.UNAUTHORIZED, 401);
   const profile = await prisma.profile.findUnique({ where: { userId } });
   if (profile) {
     await prisma.notification.deleteMany({
