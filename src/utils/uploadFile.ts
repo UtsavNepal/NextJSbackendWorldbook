@@ -21,46 +21,68 @@ function safeFileName(file: File) {
   return `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 }
 
+function safeFolderPart(value: string) {
+  return value.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'user';
+}
+
+function envValue(name: string) {
+  return (process.env[name] || '').trim().replace(/^["']|["']$/g, '');
+}
+
 function hasCloudinaryCredentials() {
-  if (process.env.CLOUDINARY_URL) return true;
+  if (envValue('CLOUDINARY_URL')) return true;
   return Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME
-    && process.env.CLOUDINARY_API_KEY
-    && process.env.CLOUDINARY_API_SECRET
+    envValue('CLOUDINARY_CLOUD_NAME')
+    && envValue('CLOUDINARY_API_KEY')
+    && envValue('CLOUDINARY_API_SECRET')
   );
 }
 
 function configureCloudinary() {
-  if (process.env.CLOUDINARY_URL) return;
+  const fromUrl = envValue('CLOUDINARY_URL');
+  if (fromUrl) {
+    try {
+      const parsed = new URL(fromUrl);
+      cloudinary.config({
+        cloud_name: parsed.hostname,
+        api_key: decodeURIComponent(parsed.username),
+        api_secret: decodeURIComponent(parsed.password),
+        secure: true,
+      });
+      return;
+    } catch {
+      // Use CLOUDINARY_* vars below if the URL cannot be parsed.
+    }
+  }
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: envValue('CLOUDINARY_CLOUD_NAME'),
+    api_key: envValue('CLOUDINARY_API_KEY'),
+    api_secret: envValue('CLOUDINARY_API_SECRET'),
     secure: true,
   });
 }
 
-function uploadToCloudinary(file: File, folder: string, ownerKey: string) {
-  return new Promise<string>((resolve, reject) => {
-    void file.arrayBuffer().then((bytes) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: `worldbook/${folder}/${ownerKey}`,
-          resource_type: 'image',
-          unique_filename: true,
-          overwrite: false,
-        },
-        (error, result) => {
-          if (error || !result?.secure_url) {
-            reject(error || new Error(ERRORS.upload.failed));
-            return;
-          }
-          resolve(result.secure_url);
-        }
-      );
-      stream.end(Buffer.from(bytes));
-    }).catch(reject);
+function cloudinaryMessage(error: unknown) {
+  if (!error || typeof error !== 'object') return '';
+  const record = error as { message?: string; error?: { message?: string } };
+  return record.message || record.error?.message || '';
+}
+
+async function uploadToCloudinary(file: File, folder: string, ownerKey: string) {
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+  const dataUri = `data:${mime};base64,${bytes.toString('base64')}`;
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: `worldbook/${safeFolderPart(folder)}/${safeFolderPart(ownerKey)}`,
+    resource_type: 'image',
+    unique_filename: true,
+    overwrite: false,
+    use_filename: false,
   });
+  if (!result.secure_url) {
+    throw new Error(ERRORS.upload.failed);
+  }
+  return result.secure_url;
 }
 
 async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
@@ -73,17 +95,35 @@ async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
 }
 
 export async function saveUploadedFile(file: File, folder: string, ownerKey: string) {
-  if (hasCloudinaryCredentials()) {
-    try {
-      configureCloudinary();
-      return await uploadToCloudinary(file, folder, ownerKey);
-    } catch (error) {
-      console.error('cloudinary upload failed', error);
-      throw new Error(ERRORS.upload.failed);
+  if (!hasCloudinaryCredentials()) {
+    if (process.env.VERCEL) {
+      throw new Error(ERRORS.upload.storageNotConfigured);
     }
+    return saveToLocalDisk(file, folder, ownerKey);
   }
-  if (process.env.VERCEL) {
-    throw new Error(ERRORS.upload.storageNotConfigured);
+
+  try {
+    configureCloudinary();
+    return await uploadToCloudinary(file, folder, ownerKey);
+  } catch (error) {
+    const message = cloudinaryMessage(error).toLowerCase();
+    console.error('cloudinary upload failed', {
+      message: cloudinaryMessage(error),
+      hasUrl: Boolean(envValue('CLOUDINARY_URL')),
+      hasCloud: Boolean(envValue('CLOUDINARY_CLOUD_NAME')),
+      hasKey: Boolean(envValue('CLOUDINARY_API_KEY')),
+      hasSecret: Boolean(envValue('CLOUDINARY_API_SECRET')),
+    });
+    if (
+      message.includes('invalid')
+      || message.includes('api key')
+      || message.includes('api_key')
+      || message.includes('signature')
+      || message.includes('cloud_name')
+      || message.includes('must supply')
+    ) {
+      throw new Error(ERRORS.upload.storageNotConfigured);
+    }
+    throw new Error(ERRORS.upload.failed);
   }
-  return saveToLocalDisk(file, folder, ownerKey);
 }
