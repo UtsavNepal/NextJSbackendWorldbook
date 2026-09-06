@@ -30,24 +30,16 @@ function canUseBlob() {
 }
 
 async function saveToBlob(file: File, folder: string, ownerKey: string) {
-  const body = Buffer.from(await file.arrayBuffer());
   const pathname = `media/${folder}/${ownerKey}/${safeFileName(file)}`;
-  const options = {
-    contentType: file.type || 'application/octet-stream',
-    addRandomSuffix: false as const,
-  };
-
-  try {
-    const blob = await put(pathname, body, { ...options, access: 'public' });
-    return blob.url;
-  } catch (publicError) {
-    try {
-      const blob = await put(pathname, body, { ...options, access: 'private' });
-      return blob.url;
-    } catch {
-      throw publicError;
-    }
-  }
+  const body = new Blob([new Uint8Array(await file.arrayBuffer())], {
+    type: file.type || 'image/jpeg',
+  });
+  const blob = await put(pathname, body, {
+    access: 'public',
+    addRandomSuffix: true,
+    contentType: file.type || 'image/jpeg',
+  });
+  return blob.url;
 }
 
 async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
