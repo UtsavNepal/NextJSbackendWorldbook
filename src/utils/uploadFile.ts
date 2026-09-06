@@ -21,12 +21,33 @@ function safeFileName(file: File) {
   return `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 }
 
+function canUseBlob() {
+  return Boolean(
+    process.env.BLOB_READ_WRITE_TOKEN
+    || process.env.BLOB_STORE_ID
+    || process.env.VERCEL
+  );
+}
+
 async function saveToBlob(file: File, folder: string, ownerKey: string) {
-  const blob = await put(`media/${folder}/${ownerKey}/${safeFileName(file)}`, file, {
-    access: 'public',
-    addRandomSuffix: false,
-  });
-  return blob.url;
+  const body = Buffer.from(await file.arrayBuffer());
+  const pathname = `media/${folder}/${ownerKey}/${safeFileName(file)}`;
+  const options = {
+    contentType: file.type || 'application/octet-stream',
+    addRandomSuffix: false as const,
+  };
+
+  try {
+    const blob = await put(pathname, body, { ...options, access: 'public' });
+    return blob.url;
+  } catch (publicError) {
+    try {
+      const blob = await put(pathname, body, { ...options, access: 'private' });
+      return blob.url;
+    } catch {
+      throw publicError;
+    }
+  }
 }
 
 async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
@@ -39,11 +60,13 @@ async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
 }
 
 export async function saveUploadedFile(file: File, folder: string, ownerKey: string) {
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    return saveToBlob(file, folder, ownerKey);
-  }
-  if (process.env.VERCEL) {
-    throw new Error(ERRORS.upload.storageNotConfigured);
+  if (canUseBlob()) {
+    try {
+      return await saveToBlob(file, folder, ownerKey);
+    } catch (error) {
+      console.error('blob upload failed', error);
+      throw new Error(ERRORS.upload.failed);
+    }
   }
   return saveToLocalDisk(file, folder, ownerKey);
 }
