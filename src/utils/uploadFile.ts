@@ -1,9 +1,7 @@
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { put } from '@vercel/blob';
+import { v2 as cloudinary } from 'cloudinary';
 import { ERRORS } from '@/constants/errors';
-
-type BlobAccess = 'public' | 'private';
 
 export function collectImageFiles(form: FormData): File[] {
   return [...form.getAll('images'), ...form.getAll('image')].filter(
@@ -23,46 +21,46 @@ function safeFileName(file: File) {
   return `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 }
 
-function hasBlobCredentials() {
+function hasCloudinaryCredentials() {
+  if (process.env.CLOUDINARY_URL) return true;
   return Boolean(
-    process.env.BLOB_READ_WRITE_TOKEN
-    || process.env.BLOB_STORE_ID
+    process.env.CLOUDINARY_CLOUD_NAME
+    && process.env.CLOUDINARY_API_KEY
+    && process.env.CLOUDINARY_API_SECRET
   );
 }
 
-function blobAuth() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  return token ? { token } : {};
-}
-
-function displayUrl(url: string) {
-  if (url.includes('.public.blob.vercel-storage.com')) return url;
-  return `/api/media?url=${encodeURIComponent(url)}`;
-}
-
-async function putWithAccess(file: File, pathname: string, access: BlobAccess) {
-  return put(pathname, file, {
-    access,
-    addRandomSuffix: true,
-    contentType: file.type || 'image/jpeg',
-    ...blobAuth(),
+function configureCloudinary() {
+  if (process.env.CLOUDINARY_URL) return;
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
   });
 }
 
-async function saveToBlob(file: File, folder: string, ownerKey: string) {
-  const pathname = `media/${folder}/${ownerKey}/${safeFileName(file)}`;
-  try {
-    const blob = await putWithAccess(file, pathname, 'public');
-    return displayUrl(blob.url);
-  } catch (publicError) {
-    try {
-      const blob = await putWithAccess(file, pathname, 'private');
-      return displayUrl(blob.url);
-    } catch (privateError) {
-      console.error('blob upload failed', { publicError, privateError });
-      throw publicError;
-    }
-  }
+function uploadToCloudinary(file: File, folder: string, ownerKey: string) {
+  return new Promise<string>((resolve, reject) => {
+    void file.arrayBuffer().then((bytes) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: `worldbook/${folder}/${ownerKey}`,
+          resource_type: 'image',
+          unique_filename: true,
+          overwrite: false,
+        },
+        (error, result) => {
+          if (error || !result?.secure_url) {
+            reject(error || new Error(ERRORS.upload.failed));
+            return;
+          }
+          resolve(result.secure_url);
+        }
+      );
+      stream.end(Buffer.from(bytes));
+    }).catch(reject);
+  });
 }
 
 async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
@@ -75,12 +73,13 @@ async function saveToLocalDisk(file: File, folder: string, ownerKey: string) {
 }
 
 export async function saveUploadedFile(file: File, folder: string, ownerKey: string) {
-  if (hasBlobCredentials()) {
+  if (hasCloudinaryCredentials()) {
     try {
-      return await saveToBlob(file, folder, ownerKey);
+      configureCloudinary();
+      return await uploadToCloudinary(file, folder, ownerKey);
     } catch (error) {
-      console.error('blob upload failed', error);
-      throw new Error(ERRORS.upload.storageNotConfigured);
+      console.error('cloudinary upload failed', error);
+      throw new Error(ERRORS.upload.failed);
     }
   }
   if (process.env.VERCEL) {

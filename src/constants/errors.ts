@@ -109,7 +109,7 @@ export const ERRORS = {
 
   upload: {
     noFile: 'Please choose a photo to upload.',
-    storageNotConfigured: 'Photo storage isn’t connected yet. Connect the Blob store to the backend project and redeploy.',
+    storageNotConfigured: 'Photo storage isn’t connected yet. Add Cloudinary keys on the server and redeploy.',
     failed: 'We couldn’t save that photo. Please try again later.',
   },
 
