@@ -109,8 +109,8 @@ export const ERRORS = {
 
   upload: {
     noFile: 'Please choose a photo to upload.',
-    storageNotConfigured: 'Photo uploads are not available right now. Please try again later.',
-    failed: 'We couldn’t save that photo. Please try a smaller image or try again later.',
+    storageNotConfigured: 'Photo storage isn’t connected yet. Connect the Blob store to the backend project and redeploy.',
+    failed: 'We couldn’t save that photo. Please try again later.',
   },
 
   email: {
